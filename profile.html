@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase-config.js"></script>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>FitCoach Hub — My Profile</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+*{margin:0;padding:0;box-sizing:border-box;}
+:root{
+  --bg:#0a0a0a;--surface:#111;--card:#1a1a1a;--border:#2a2a2a;
+  --orange:#ff6b00;--orange-dim:#ff6b0018;--orange-light:#ff8c33;
+  --text:#f0f0f0;--muted:#888;--green:#22c55e;--blue:#3b82f6;
+}
+body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);display:flex;min-height:100vh;}
+
+/* SIDEBAR */
+.sidebar{width:230px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;position:fixed;top:0;left:0;height:100vh;z-index:100;}
+.logo{padding:22px 18px;border-bottom:1px solid var(--border);}
+.logo a{font-size:19px;font-weight:800;color:var(--orange);text-decoration:none;}
+.logo small{display:block;color:var(--muted);font-size:11px;margin-top:2px;}
+.nav{flex:1;padding:14px 0;overflow-y:auto;}
+.nav-label{padding:8px 18px 4px;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;}
+.nav-item{display:flex;align-items:center;gap:10px;padding:10px 18px;color:var(--muted);cursor:pointer;font-size:13px;text-decoration:none;transition:all .2s;position:relative;}
+.nav-item:hover,.nav-item.active{color:var(--text);background:var(--orange-dim);}
+.nav-item.active::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--orange);}
+.nav-icon{font-size:16px;}
+.nav-badge{margin-left:auto;background:var(--orange);color:#fff;font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px;}
+.sidebar-bottom{padding:16px 18px;border-top:1px solid var(--border);}
+.user-info{display:flex;align-items:center;gap:10px;}
+.user-av{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--blue),#6366f1);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;}
+.user-name{font-size:13px;font-weight:600;}
+.user-plan{font-size:11px;color:var(--orange);}
+
+/* MAIN */
+.main{margin-left:230px;flex:1;}
+.topbar{padding:14px 26px;border-bottom:1px solid var(--border);background:var(--surface);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50;}
+.topbar-title{font-size:19px;font-weight:700;}
+.btn{padding:9px 18px;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;border:none;text-decoration:none;display:inline-block;transition:all .2s;}
+.btn-orange{background:var(--orange);color:#fff;}
+.btn-orange:hover{background:var(--orange-light);}
+.btn-outline{background:none;border:1px solid var(--border);color:var(--text);}
+.btn-outline:hover{border-color:var(--orange);color:var(--orange);}
+
+.content{padding:28px 26px;max-width:960px;}
+
+/* PROFILE HERO */
+.profile-hero{background:linear-gradient(135deg,#1a0800,#111);border:1px solid rgba(255,107,0,.2);border-radius:18px;padding:32px;margin-bottom:24px;display:flex;align-items:flex-end;gap:24px;position:relative;overflow:hidden;}
+.profile-hero::before{content:'';position:absolute;top:-40px;right:-40px;width:200px;height:200px;border-radius:50%;background:radial-gradient(circle,rgba(255,107,0,.1),transparent);}
+.avatar-wrap{position:relative;flex-shrink:0;}
+.profile-avatar{width:100px;height:100px;border-radius:50%;background:linear-gradient(135deg,var(--orange),#ff9500);display:flex;align-items:center;justify-content:center;font-size:38px;font-weight:800;border:3px solid rgba(255,107,0,.4);}
+.avatar-edit{position:absolute;bottom:4px;right:4px;width:28px;height:28px;background:var(--orange);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;cursor:pointer;border:2px solid var(--bg);}
+.profile-info{flex:1;}
+.profile-name{font-size:26px;font-weight:800;margin-bottom:4px;}
+.profile-email{font-size:13px;color:var(--muted);margin-bottom:10px;}
+.profile-badges{display:flex;gap:8px;flex-wrap:wrap;}
+.profile-badge{display:inline-flex;align-items:center;gap:4px;padding:4px 12px;border-radius:20px;font-size:11px;font-weight:600;}
+.pb-active{background:#22c55e18;color:var(--green);border:1px solid #22c55e30;}
+.pb-plan{background:var(--orange-dim);color:var(--orange);border:1px solid rgba(255,107,0,.3);}
+.pb-streak{background:#3b82f618;color:var(--blue);border:1px solid #3b82f630;}
+.profile-hero-stats{display:flex;gap:0;margin-left:auto;}
+.hero-stat{text-align:center;padding:0 20px;border-right:1px solid var(--border);}
+.hero-stat:last-child{border:none;}
+.hero-stat-val{font-size:22px;font-weight:800;color:var(--orange);}
+.hero-stat-label{font-size:11px;color:var(--muted);margin-top:3px;}
+
+/* TABS */
+.tabs{display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:24px;}
+.tab{padding:12px 20px;font-size:13px;font-weight:600;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;transition:all .2s;}
+.tab:hover{color:var(--text);}
+.tab.active{color:var(--orange);border-bottom-color:var(--orange);}
+
+/* GRID */
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:18px;}
+.card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:22px;}
+.card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;}
+.card-title{font-size:15px;font-weight:700;}
+.edit-btn{font-size:12px;color:var(--orange);cursor:pointer;font-weight:600;background:none;border:none;padding:0;}
+
+/* FORM */
+.form-group{margin-bottom:14px;}
+.form-label{font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.3px;margin-bottom:6px;display:block;}
+.form-input{width:100%;background:var(--surface);border:1px solid var(--border);border-radius:9px;padding:11px 14px;color:var(--text);font-size:13px;font-family:inherit;outline:none;transition:border-color .2s;}
+.form-input:focus{border-color:var(--orange);}
+.form-input:disabled{opacity:.5;cursor:not-allowed;}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+
+/* INFO ROWS */
+.info-row{display:flex;align-items:center;justify-content:space-between;padding:11px 0;border-bottom:1px solid var(--border);}
+.info-row:last-child{border:none;}
+.info-label{font-size:12px;color:var(--muted);}
+.info-val{font-size:13px;font-weight:600;}
+
+/* PROGRESS PHOTOS */
+.photos-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;}
+.photo-item{aspect-ratio:1;background:var(--surface);border:1px solid var(--border);border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;transition:all .2s;overflow:hidden;}
+.photo-item:hover{border-color:var(--orange);}
+.photo-item.add{border-style:dashed;}
+.photo-date{font-size:10px;color:var(--muted);margin-top:4px;}
+
+/* ACHIEVEMENT */
+.achievements-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;}
+.achievement{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px;text-align:center;}
+.achievement.earned{border-color:var(--orange);background:var(--orange-dim);}
+.ach-icon{font-size:28px;margin-bottom:6px;}
+.ach-name{font-size:11px;font-weight:600;color:var(--muted);}
+.achievement.earned .ach-name{color:var(--orange);}
+.ach-date{font-size:10px;color:var(--muted);margin-top:3px;}
+
+/* PLAN HISTORY */
+.plan-history-item{display:flex;align-items:center;gap:12px;padding:12px;background:var(--surface);border:1px solid var(--border);border-radius:10px;margin-bottom:8px;}
+.plan-history-item:last-child{margin:0;}
+.phi-icon{width:40px;height:40px;border-radius:10px;background:var(--orange-dim);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;}
+.phi-name{font-size:13px;font-weight:600;}
+.phi-meta{font-size:11px;color:var(--muted);margin-top:2px;}
+.phi-status{margin-left:auto;font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;}
+.phi-status.active{background:#22c55e18;color:var(--green);}
+.phi-status.completed{background:#3b82f618;color:var(--blue);}
+
+/* SECTION TABS CONTENT */
+.tab-content{display:none;}
+.tab-content.active{display:block;}
+
+@media(max-width:900px){
+  .sidebar{width:56px;}
+  .sidebar .logo a,.nav-item span,.nav-label,.user-name,.user-plan,.logo small{display:none;}
+  .main{margin-left:56px;}
+  .grid-2{grid-template-columns:1fr;}
+  .profile-hero{flex-direction:column;align-items:flex-start;}
+  .profile-hero-stats{margin-left:0;margin-top:16px;}
+  .hero-stat{padding:0 14px;}
+  .achievements-grid,.photos-grid{grid-template-columns:repeat(3,1fr);}
+  .form-row{grid-template-columns:1fr;}
+}
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <div class="logo">
+    <a href="index.html">⚡ FitCoach Hub</a>
+    <small>Member Area</small>
+  </div>
+  <nav class="nav">
+    <div class="nav-label">Main</div>
+    <a href="member-dashboard.html" class="nav-item"><span class="nav-icon">🏠</span><span>Dashboard</span></a>
+    <a href="marketplace.html" class="nav-item"><span class="nav-icon">🔍</span><span>Find Trainers</span></a>
+    <a href="plan-details.html" class="nav-item"><span class="nav-icon">📦</span><span>My Plan</span></a>
+    <div class="nav-label">Track</div>
+    <a href="progress-tracker.html" class="nav-item"><span class="nav-icon">📊</span><span>Progress</span></a>
+    <a href="progress-tracker.html" class="nav-item"><span class="nav-icon">💧</span><span>Habits</span></a>
+    <a href="messages.html" class="nav-item"><span class="nav-icon">💬</span><span>Messages</span><span class="nav-badge">3</span></a>
+    <div class="nav-label">Account</div>
+    <a href="profile.html" class="nav-item active"><span class="nav-icon">👤</span><span>Profile</span></a>
+    <a href="settings.html" class="nav-item"><span class="nav-icon">⚙️</span><span>Settings</span></a>
+    <a href="index.html" class="nav-item"><span class="nav-icon">🚪</span><span>Logout</span></a>
+  </nav>
+  <div class="sidebar-bottom">
+    <div class="user-info">
+      <div class="user-av">A</div>
+      <div><div class="user-name">Amit Kumar</div><div class="user-plan">Pro Plan · Active</div></div>
+    </div>
+  </div>
+</aside>
+
+<!-- MAIN -->
+<div class="main">
+  <div class="topbar">
+    <div class="topbar-title">My Profile</div>
+    <div style="display:flex;gap:8px;">
+      <a href="settings.html" class="btn btn-outline">⚙️ Settings</a>
+      <button class="btn btn-orange" onclick="saveProfile()">💾 Save Changes</button>
+    </div>
+  </div>
+
+  <div class="content">
+    <!-- PROFILE HERO -->
+    <div class="profile-hero">
+      <div class="avatar-wrap">
+        <div class="profile-avatar" id="profileAvatar">A</div>
+        <div class="avatar-edit" onclick="document.getElementById('avatarInput').click()">✏️</div>
+        <input type="file" id="avatarInput" style="display:none;" accept="image/*" onchange="changeAvatar(this)"/>
+      </div>
+      <div class="profile-info">
+        <div class="profile-name">Amit Kumar</div>
+        <div class="profile-email">amit.kumar@gmail.com · Moradabad, UP</div>
+        <div class="profile-badges">
+          <span class="profile-badge pb-active">● Active Member</span>
+          <span class="profile-badge pb-plan">📦 Weight Loss Pro</span>
+          <span class="profile-badge pb-streak">🔥 14 Day Streak</span>
+        </div>
+      </div>
+      <div class="profile-hero-stats">
+        <div class="hero-stat"><div class="hero-stat-val">↓3.5kg</div><div class="hero-stat-label">Weight Lost</div></div>
+        <div class="hero-stat"><div class="hero-stat-val">14</div><div class="hero-stat-label">Day Streak</div></div>
+        <div class="hero-stat"><div class="hero-stat-val">4</div><div class="hero-stat-label">Badges</div></div>
+        <div class="hero-stat"><div class="hero-stat-val">12</div><div class="hero-stat-label">Workouts</div></div>
+      </div>
+    </div>
+
+    <!-- TABS -->
+    <div class="tabs">
+      <div class="tab active" onclick="switchTab(this,'personal')">👤 Personal Info</div>
+      <div class="tab" onclick="switchTab(this,'fitness')">💪 Fitness Goals</div>
+      <div class="tab" onclick="switchTab(this,'photos')">📸 Progress Photos</div>
+      <div class="tab" onclick="switchTab(this,'achievements')">🏅 Achievements</div>
+      <div class="tab" onclick="switchTab(this,'plans')">📦 Plan History</div>
+    </div>
+
+    <!-- PERSONAL INFO TAB -->
+    <div class="tab-content active" id="tab-personal">
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-header"><div class="card-title">👤 Basic Information</div></div>
+          <div class="form-row">
+            <div class="form-group"><label class="form-label">First Name</label><input type="text" class="form-input" value="Amit"/></div>
+            <div class="form-group"><label class="form-label">Last Name</label><input type="text" class="form-input" value="Kumar"/></div>
+          </div>
+          <div class="form-group"><label class="form-label">Email</label><input type="email" class="form-input" value="amit.kumar@gmail.com"/></div>
+          <div class="form-row">
+            <div class="form-group"><label class="form-label">Phone</label><input type="tel" class="form-input" value="+91 98765 43210"/></div>
+            <div class="form-group"><label class="form-label">Date of Birth</label><input type="date" class="form-input" value="1998-05-14"/></div>
+          </div>
+          <div class="form-row">
+            <div class="form-group"><label class="form-label">Gender</label>
+              <select class="form-input"><option selected>Male</option><option>Female</option><option>Other</option></select>
+            </div>
+            <div class="form-group"><label class="form-label">City</label><input type="text" class="form-input" value="Moradabad, UP"/></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header"><div class="card-title">📊 Current Stats</div></div>
+          <div class="form-row">
+            <div class="form-group"><label class="form-label">Current Weight (kg)</label><input type="number" class="form-input" value="72.5" step="0.1"/></div>
+            <div class="form-group"><label class="form-label">Starting Weight (kg)</label><input type="number" class="form-input" value="76" step="0.1" disabled/></div>
+          </div>
+          <div class="form-row">
+            <div class="form-group"><label class="form-label">Goal Weight (kg)</label><input type="number" class="form-input" value="68" step="0.1"/></div>
+            <div class="form-group"><label class="form-label">Height (cm)</label><input type="number" class="form-input" value="175"/></div>
+          </div>
+          <div class="form-row">
+            <div class="form-group"><label class="form-label">Age</label><input type="number" class="form-input" value="27"/></div>
+            <div class="form-group"><label class="form-label">Activity Level</label>
+              <select class="form-input"><option>Sedentary</option><option selected>Lightly Active</option><option>Moderately Active</option><option>Very Active</option></select>
+            </div>
+          </div>
+          <div style="background:var(--surface);border-radius:10px;padding:12px;margin-top:4px;">
+            <div style="font-size:11px;color:var(--muted);margin-bottom:6px;">BMI CALCULATOR</div>
+            <div style="font-size:22px;font-weight:800;color:var(--orange);">23.7 <span style="font-size:13px;color:var(--green);">Normal</span></div>
+            <div style="font-size:11px;color:var(--muted);margin-top:2px;">Based on height 175cm · weight 72.5kg</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><div class="card-title">📋 Account Details</div></div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:0;">
+          <div class="info-row" style="flex-direction:column;align-items:flex-start;padding:12px 16px 12px 0;border-right:1px solid var(--border);">
+            <div class="info-label">Member Since</div><div class="info-val" style="margin-top:4px;">June 1, 2026</div>
+          </div>
+          <div class="info-row" style="flex-direction:column;align-items:flex-start;padding:12px 16px;border-right:1px solid var(--border);">
+            <div class="info-label">Current Plan</div><div class="info-val" style="margin-top:4px;color:var(--orange);">Weight Loss Pro</div>
+          </div>
+          <div class="info-row" style="flex-direction:column;align-items:flex-start;padding:12px 0 12px 16px;">
+            <div class="info-label">Plan Renews</div><div class="info-val" style="margin-top:4px;">July 1, 2026</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- FITNESS GOALS TAB -->
+    <div class="tab-content" id="tab-fitness">
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-header"><div class="card-title">🎯 My Fitness Goal</div></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;">
+            <div id="g1" class="goal-item" onclick="selectGoal(this)" style="border:2px solid var(--orange);border-radius:10px;padding:14px;text-align:center;cursor:pointer;background:var(--orange-dim);">
+              <div style="font-size:24px;margin-bottom:6px;">⚖️</div><div style="font-size:12px;font-weight:700;color:var(--orange);">Weight Loss</div>
+            </div>
+            <div id="g2" class="goal-item" onclick="selectGoal(this)" style="border:1px solid var(--border);border-radius:10px;padding:14px;text-align:center;cursor:pointer;">
+              <div style="font-size:24px;margin-bottom:6px;">💪</div><div style="font-size:12px;font-weight:700;">Muscle Gain</div>
+            </div>
+            <div id="g3" class="goal-item" onclick="selectGoal(this)" style="border:1px solid var(--border);border-radius:10px;padding:14px;text-align:center;cursor:pointer;">
+              <div style="font-size:24px;margin-bottom:6px;">🔥</div><div style="font-size:12px;font-weight:700;">Fat Loss</div>
+            </div>
+            <div id="g4" class="goal-item" onclick="selectGoal(this)" style="border:1px solid var(--border);border-radius:10px;padding:14px;text-align:center;cursor:pointer;">
+              <div style="font-size:24px;margin-bottom:6px;">🏋️</div><div style="font-size:12px;font-weight:700;">Strength</div>
+            </div>
+          </div>
+          <div class="form-group"><label class="form-label">Target Date</label><input type="date" class="form-input" value="2026-09-01"/></div>
+          <div class="form-group"><label class="form-label">Workout Days Per Week</label>
+            <select class="form-input"><option>3 days</option><option>4 days</option><option selected>5 days</option><option>6 days</option></select>
+          </div>
+          <div class="form-group"><label class="form-label">Experience Level</label>
+            <select class="form-input"><option selected>Beginner</option><option>Intermediate</option><option>Advanced</option></select>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header"><div class="card-title">🥗 Diet Preferences</div></div>
+          <div class="form-group"><label class="form-label">Diet Type</label>
+            <select class="form-input"><option selected>Vegetarian</option><option>Non-Vegetarian</option><option>Vegan</option><option>Eggetarian</option></select>
+          </div>
+          <div class="form-group"><label class="form-label">Daily Calorie Target</label><input type="number" class="form-input" value="1800" placeholder="kcal"/></div>
+          <div class="form-group"><label class="form-label">Daily Protein Target (g)</label><input type="number" class="form-input" value="120"/></div>
+          <div class="form-group"><label class="form-label">Water Goal (glasses/day)</label><input type="number" class="form-input" value="8" min="4" max="16"/></div>
+          <div class="form-group"><label class="form-label">Food Allergies / Restrictions</label><textarea class="form-input" rows="3" placeholder="e.g. No dairy, No gluten...">No restrictions</textarea></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><div class="card-title">📏 Body Measurements</div><button class="edit-btn">+ Update Measurements</button></div>
+        <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px;">
+          <div style="text-align:center;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px;">
+            <div style="font-size:11px;color:var(--muted);margin-bottom:6px;">CHEST</div>
+            <input type="number" class="form-input" value="96" style="text-align:center;font-size:18px;font-weight:700;padding:6px;"/>
+            <div style="font-size:10px;color:var(--green);margin-top:4px;">↓ 2cm</div>
+          </div>
+          <div style="text-align:center;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px;">
+            <div style="font-size:11px;color:var(--muted);margin-bottom:6px;">WAIST</div>
+            <input type="number" class="form-input" value="88" style="text-align:center;font-size:18px;font-weight:700;padding:6px;"/>
+            <div style="font-size:10px;color:var(--green);margin-top:4px;">↓ 3cm</div>
+          </div>
+          <div style="text-align:center;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px;">
+            <div style="font-size:11px;color:var(--muted);margin-bottom:6px;">HIPS</div>
+            <input type="number" class="form-input" value="98" style="text-align:center;font-size:18px;font-weight:700;padding:6px;"/>
+            <div style="font-size:10px;color:var(--green);margin-top:4px;">↓ 1cm</div>
+          </div>
+          <div style="text-align:center;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px;">
+            <div style="font-size:11px;color:var(--muted);margin-bottom:6px;">ARMS</div>
+            <input type="number" class="form-input" value="34" style="text-align:center;font-size:18px;font-weight:700;padding:6px;"/>
+            <div style="font-size:10px;color:var(--orange);margin-top:4px;">↑ 1cm</div>
+          </div>
+          <div style="text-align:center;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px;">
+            <div style="font-size:11px;color:var(--muted);margin-bottom:6px;">THIGHS</div>
+            <input type="number" class="form-input" value="56" style="text-align:center;font-size:18px;font-weight:700;padding:6px;"/>
+            <div style="font-size:10px;color:var(--green);margin-top:4px;">↓ 2cm</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PHOTOS TAB -->
+    <div class="tab-content" id="tab-photos">
+      <div class="card">
+        <div class="card-header"><div class="card-title">📸 Transformation Gallery</div><button class="btn btn-orange" style="font-size:12px;padding:7px 14px;" onclick="document.getElementById('photoUpload').click()">+ Add Photo</button></div>
+        <input type="file" id="photoUpload" style="display:none;" accept="image/*" onchange="addPhoto(this)"/>
+        <div style="background:var(--orange-dim);border:1px solid rgba(255,107,0,.3);border-radius:10px;padding:12px;margin-bottom:16px;font-size:13px;color:var(--muted);">
+          📸 Upload weekly progress photos to track your visual transformation. Only you and your trainer can see these.
+        </div>
+        <div class="photos-grid" id="photosGrid">
+          <div class="photo-item">
+            <div style="font-size:32px;">📷</div>
+            <div style="font-size:11px;font-weight:600;margin-top:6px;">Week 1</div>
+            <div class="photo-date">June 1, 2026</div>
+          </div>
+          <div class="photo-item">
+            <div style="font-size:32px;">📷</div>
+            <div style="font-size:11px;font-weight:600;margin-top:6px;">Week 2</div>
+            <div class="photo-date">June 7, 2026</div>
+          </div>
+          <div class="photo-item add" onclick="document.getElementById('photoUpload').click()">
+            <div style="font-size:28px;color:var(--muted);">+</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:6px;">Add Week 3</div>
+          </div>
+          <div class="photo-item add" onclick="document.getElementById('photoUpload').click()">
+            <div style="font-size:28px;color:var(--muted);">+</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:6px;">Week 4</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ACHIEVEMENTS TAB -->
+    <div class="tab-content" id="tab-achievements">
+      <div class="card">
+        <div class="card-header"><div class="card-title">🏅 All Achievements</div><span style="font-size:12px;color:var(--muted);">4 / 12 earned</span></div>
+        <div class="achievements-grid">
+          <div class="achievement earned"><div class="ach-icon">🔥</div><div class="ach-name">7 Day Streak</div><div class="ach-date">June 7</div></div>
+          <div class="achievement earned"><div class="ach-icon">⚖️</div><div class="ach-name">First 1kg Lost</div><div class="ach-date">June 4</div></div>
+          <div class="achievement earned"><div class="ach-icon">💧</div><div class="ach-name">Hydration Pro</div><div class="ach-date">June 8</div></div>
+          <div class="achievement earned"><div class="ach-icon">🏋️</div><div class="ach-name">10 Workouts</div><div class="ach-date">June 12</div></div>
+          <div class="achievement"><div class="ach-icon" style="opacity:.3">🏆</div><div class="ach-name">30 Day Streak</div><div class="ach-date">Locked</div></div>
+          <div class="achievement"><div class="ach-icon" style="opacity:.3">🎯</div><div class="ach-name">Goal Reached</div><div class="ach-date">Locked</div></div>
+          <div class="achievement"><div class="ach-icon" style="opacity:.3">📸</div><div class="ach-name">Transformation</div><div class="ach-date">Locked</div></div>
+          <div class="achievement"><div class="ach-icon" style="opacity:.3">👑</div><div class="ach-name">Legend</div><div class="ach-date">Locked</div></div>
+          <div class="achievement"><div class="ach-icon" style="opacity:.3">🥗</div><div class="ach-name">Diet Master</div><div class="ach-date">Locked</div></div>
+          <div class="achievement"><div class="ach-icon" style="opacity:.3">💪</div><div class="ach-name">Muscle Up</div><div class="ach-date">Locked</div></div>
+          <div class="achievement"><div class="ach-icon" style="opacity:.3">🚀</div><div class="ach-name">Fast Starter</div><div class="ach-date">Locked</div></div>
+          <div class="achievement"><div class="ach-icon" style="opacity:.3">⭐</div><div class="ach-name">5 Star Review</div><div class="ach-date">Locked</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PLANS TAB -->
+    <div class="tab-content" id="tab-plans">
+      <div class="card">
+        <div class="card-header"><div class="card-title">📦 Plan History</div><a href="marketplace.html" class="btn btn-orange" style="font-size:12px;padding:7px 14px;">+ Browse Plans</a></div>
+        <div class="plan-history-item">
+          <div class="phi-icon">⚖️</div>
+          <div>
+            <div class="phi-name">Weight Loss Pro — Rahul Sharma</div>
+            <div class="phi-meta">Started June 1, 2026 · ₹199/month · Day 14/30</div>
+          </div>
+          <span class="phi-status active">● Active</span>
+        </div>
+        <div class="plan-history-item">
+          <div class="phi-icon" style="background:#3b82f618;">💪</div>
+          <div>
+            <div class="phi-name">Beginner Strength — Arjun Singh</div>
+            <div class="phi-meta">May 1 – May 31, 2026 · ₹199/month · Completed</div>
+          </div>
+          <span class="phi-status completed">Completed</span>
+        </div>
+        <div style="text-align:center;margin-top:16px;">
+          <a href="marketplace.html" class="btn btn-outline">🔍 Find More Trainers</a>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+function switchTab(el, id){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('tab-'+id).classList.add('active');
+}
+function selectGoal(el){
+  document.querySelectorAll('.goal-item').forEach(g=>{
+    g.style.border='1px solid var(--border)';
+    g.style.background='';
+    g.querySelector('div:last-child').style.color='';
+  });
+  el.style.border='2px solid var(--orange)';
+  el.style.background='var(--orange-dim)';
+  el.querySelector('div:last-child').style.color='var(--orange)';
+}
+function changeAvatar(input){
+  if(input.files && input.files[0]){
+    const r=new FileReader();
+    r.onload=e=>{
+      const av=document.getElementById('profileAvatar');
+      av.style.backgroundImage=`url(${e.target.result})`;
+      av.style.backgroundSize='cover';
+      av.textContent='';
+    };
+    r.readAsDataURL(input.files[0]);
+  }
+}
+function addPhoto(input){
+  if(input.files && input.files[0]){
+    const r=new FileReader();
+    r.onload=e=>{
+      const grid=document.getElementById('photosGrid');
+      const d=document.createElement('div');
+      d.className='photo-item';
+      d.innerHTML=`<img src="${e.target.result}" style="width:100%;height:100%;object-fit:cover;border-radius:10px;"/><div class="photo-date">Just now</div>`;
+      grid.insertBefore(d,grid.querySelector('.photo-item.add'));
+    };
+    r.readAsDataURL(input.files[0]);
+  }
+}
+function saveProfile(){
+  const t=document.createElement('div');
+  t.style.cssText='position:fixed;bottom:24px;right:24px;background:#22c55e;color:#fff;padding:12px 20px;border-radius:10px;font-weight:600;font-size:13px;z-index:9999;box-shadow:0 4px 20px rgba(34,197,94,.3);';
+  t.textContent='✅ Profile saved successfully!';
+  document.body.appendChild(t);
+  setTimeout(()=>t.remove(),3000);
+}
+document.querySelectorAll('.nav-item').forEach(item=>{
+  item.addEventListener('click',()=>{
+    document.querySelectorAll('.nav-item').forEach(i=>i.classList.remove('active'));
+    item.classList.add('active');
+  });
+});
+</script>
+</body>
+</html>

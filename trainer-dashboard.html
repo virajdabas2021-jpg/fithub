@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase-config.js"></script>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>FitCoach Hub — Trainer Dashboard</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+*{margin:0;padding:0;box-sizing:border-box;}
+:root{--bg:#0a0a0a;--surface:#111;--card:#1a1a1a;--border:#2a2a2a;--orange:#ff6b00;--orange-dim:#ff6b0018;--orange-light:#ff8c33;--text:#f0f0f0;--muted:#888;--green:#22c55e;--blue:#3b82f6;--yellow:#eab308;}
+body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);display:flex;min-height:100vh;}
+
+/* SIDEBAR */
+.sidebar{width:230px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;position:fixed;top:0;left:0;height:100vh;z-index:100;}
+.logo{padding:22px 18px;border-bottom:1px solid var(--border);}
+.logo a{font-size:19px;font-weight:800;color:var(--orange);text-decoration:none;}
+.logo small{display:block;color:var(--muted);font-size:11px;margin-top:2px;}
+.nav{flex:1;padding:14px 0;overflow-y:auto;}
+.nav-label{padding:8px 18px 4px;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;}
+.nav-item{display:flex;align-items:center;gap:10px;padding:10px 18px;color:var(--muted);cursor:pointer;font-size:13px;text-decoration:none;position:relative;transition:all .2s;}
+.nav-item:hover,.nav-item.active{color:var(--text);background:var(--orange-dim);}
+.nav-item.active::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--orange);}
+.nav-icon{font-size:16px;}
+.nav-badge{margin-left:auto;background:var(--orange);color:#fff;font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px;}
+.sidebar-bottom{padding:16px 18px;border-top:1px solid var(--border);}
+.trainer-info{display:flex;align-items:center;gap:10px;}
+.trainer-av{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--orange),#ff9500);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px;}
+.trainer-name{font-size:13px;font-weight:600;}
+.trainer-status{font-size:11px;color:var(--green);}
+
+/* MAIN */
+.main{margin-left:230px;flex:1;}
+.topbar{padding:14px 26px;border-bottom:1px solid var(--border);background:var(--surface);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50;}
+.topbar-title{font-size:19px;font-weight:700;}
+.btn{padding:8px 16px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;border:none;text-decoration:none;display:inline-block;transition:all .2s;}
+.btn-orange{background:var(--orange);color:#fff;}
+.btn-orange:hover{background:var(--orange-light);}
+.btn-outline{background:none;border:1px solid var(--border);color:var(--text);}
+
+.content{padding:24px 26px;}
+
+/* EARNINGS BANNER */
+.earnings-banner{background:linear-gradient(135deg,#1a0800,#0f0f0f);border:1px solid rgba(255,107,0,.25);border-radius:16px;padding:24px;margin-bottom:24px;display:grid;grid-template-columns:1fr auto;gap:20px;align-items:center;}
+.eb-greeting{font-size:14px;color:var(--muted);margin-bottom:4px;}
+.eb-title{font-size:22px;font-weight:800;margin-bottom:4px;}
+.eb-sub{font-size:13px;color:var(--muted);}
+.eb-cards{display:flex;gap:12px;}
+.eb-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 20px;text-align:center;min-width:110px;}
+.eb-card-val{font-size:22px;font-weight:800;color:var(--orange);}
+.eb-card-label{font-size:11px;color:var(--muted);margin-top:3px;}
+.eb-card.green .eb-card-val{color:var(--green);}
+
+/* STATS */
+.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:22px;}
+.stat-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px;}
+.stat-icon{font-size:20px;margin-bottom:8px;}
+.stat-val{font-size:24px;font-weight:800;}
+.stat-label{font-size:11px;color:var(--muted);margin-top:3px;}
+.stat-change{font-size:11px;margin-top:6px;font-weight:600;}
+.up{color:var(--green);}
+.down{color:#ef4444;}
+
+/* GRID */
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:18px;}
+.grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:18px;margin-bottom:18px;}
+.card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:20px;}
+.card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
+.card-title{font-size:14px;font-weight:700;}
+.view-all{font-size:11px;color:var(--orange);cursor:pointer;font-weight:600;}
+
+/* REVENUE CHART */
+.bar-chart{display:flex;align-items:flex-end;gap:8px;height:120px;margin-top:8px;}
+.bar-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;}
+.bar{width:100%;background:linear-gradient(to top,var(--orange),var(--orange-light));border-radius:4px 4px 0 0;transition:all .3s;}
+.bar-label{font-size:10px;color:var(--muted);}
+.bar-val{font-size:9px;color:var(--orange);font-weight:600;}
+
+/* SUBSCRIBERS */
+.subscriber-item{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);}
+.subscriber-item:last-child{border:none;}
+.sub-av{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex-shrink:0;}
+.sub-name{font-size:13px;font-weight:600;}
+.sub-meta{font-size:11px;color:var(--muted);}
+.sub-status{margin-left:auto;font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;}
+.sub-status.active{background:#22c55e18;color:var(--green);}
+.sub-status.new{background:var(--orange-dim);color:var(--orange);}
+.sub-progress{display:flex;align-items:center;gap:6px;margin-top:3px;}
+.mini-progress{width:60px;height:4px;background:var(--border);border-radius:2px;overflow:hidden;}
+.mini-progress-fill{height:100%;background:var(--orange);border-radius:2px;}
+.mini-progress-val{font-size:10px;color:var(--muted);}
+
+/* UPLOAD SECTION */
+.upload-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.upload-item{border:2px dashed var(--border);border-radius:10px;padding:16px;text-align:center;cursor:pointer;transition:all .2s;}
+.upload-item:hover{border-color:var(--orange);background:var(--orange-dim);}
+.upload-icon{font-size:24px;margin-bottom:6px;}
+.upload-label{font-size:12px;font-weight:600;}
+.upload-sub{font-size:11px;color:var(--muted);margin-top:2px;}
+
+/* MESSAGES */
+.msg-item{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);cursor:pointer;}
+.msg-item:last-child{border:none;}
+.msg-av{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex-shrink:0;}
+.msg-name{font-size:13px;font-weight:600;}
+.msg-preview-text{font-size:11px;color:var(--muted);}
+.unread-dot{width:8px;height:8px;background:var(--orange);border-radius:50%;margin-left:auto;}
+
+/* REVIEWS */
+.review-mini{padding:10px 0;border-bottom:1px solid var(--border);}
+.review-mini:last-child{border:none;}
+.review-mini-header{display:flex;align-items:center;gap:8px;margin-bottom:4px;}
+.rm-av{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:11px;}
+.rm-name{font-size:12px;font-weight:600;}
+.rm-stars{font-size:11px;}
+.rm-text{font-size:12px;color:var(--muted);line-height:1.5;}
+
+/* PLAN CONTENT */
+.content-item{display:flex;align-items:center;gap:10px;padding:9px 12px;background:var(--surface);border:1px solid var(--border);border-radius:9px;margin-bottom:8px;}
+.content-item:last-child{margin:0;}
+.ci-icon{font-size:18px;}
+.ci-name{font-size:13px;font-weight:600;flex:1;}
+.ci-meta{font-size:11px;color:var(--muted);}
+.ci-actions{display:flex;gap:6px;}
+.icon-btn{background:none;border:1px solid var(--border);border-radius:6px;padding:4px 8px;cursor:pointer;font-size:12px;color:var(--muted);}
+.icon-btn:hover{border-color:var(--orange);color:var(--orange);}
+
+/* QR CARD */
+.qr-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:20px;text-align:center;}
+.qr-box{width:120px;height:120px;background:var(--card);border-radius:10px;margin:14px auto;display:flex;align-items:center;justify-content:center;font-size:44px;border:1px solid var(--border);}
+
+@media(max-width:900px){
+  .sidebar{width:56px;}
+  .sidebar .logo a,.nav-item span,.nav-label,.trainer-name,.trainer-status,.logo small{display:none;}
+  .main{margin-left:56px;}
+  .stats-row{grid-template-columns:1fr 1fr;}
+  .grid-2,.grid-3{grid-template-columns:1fr;}
+  .eb-cards{flex-direction:column;}
+  .earnings-banner{grid-template-columns:1fr;}
+}
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <div class="logo">
+    <a href="index.html">⚡ FitCoach Hub</a>
+    <small>Trainer Panel</small>
+  </div>
+  <nav class="nav">
+    <div class="nav-label">Main</div>
+    <a href="trainer-dashboard.html" class="nav-item active"><span class="nav-icon">🏠</span><span>Dashboard</span></a>
+    <a href="#" class="nav-item"><span class="nav-icon">👥</span><span>My Subscribers</span><span class="nav-badge">12</span></a>
+    <div class="nav-label">Content</div>
+    <a href="#" class="nav-item"><span class="nav-icon">🏋️</span><span>Workout Plans</span></a>
+    <a href="#" class="nav-item"><span class="nav-icon">🥗</span><span>Diet Plans</span></a>
+    <a href="#" class="nav-item"><span class="nav-icon">🎥</span><span>Exercise Videos</span></a>
+    <a href="#" class="nav-item"><span class="nav-icon">📸</span><span>Progress Photos</span></a>
+    <div class="nav-label">Business</div>
+    <a href="messages.html" class="nav-item"><span class="nav-icon">💬</span><span>Messages</span><span class="nav-badge">5</span></a>
+    <a href="#" class="nav-item"><span class="nav-icon">💰</span><span>Earnings</span></a>
+    <a href="#" class="nav-item"><span class="nav-icon">⭐</span><span>Reviews</span></a>
+    <div class="nav-label">Account</div>
+    <a href="profile.html" class="nav-item"><span class="nav-icon">👤</span><span>My Profile</span></a>
+    <a href="settings.html" class="nav-item"><span class="nav-icon">⚙️</span><span>Settings</span></a>
+    <a href="#" onclick="doLogout()" class="nav-item"><span class="nav-icon">🚪</span><span>Logout</span></a>
+  </nav>
+  <div class="sidebar-bottom">
+    <div class="trainer-info">
+      <div class="trainer-av">R</div>
+      <div><div class="trainer-name">Rahul Sharma</div><div class="trainer-status">● Active · Verified</div></div>
+    </div>
+  </div>
+</aside>
+
+<!-- MAIN -->
+<div class="main">
+  <div class="topbar">
+    <div class="topbar-title">Trainer Dashboard</div>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <a href="messages.html" style="position:relative;font-size:20px;cursor:pointer;text-decoration:none;">🔔<span style="position:absolute;top:-2px;right:-2px;width:8px;height:8px;background:var(--orange);border-radius:50%;"></span></a>
+      <button class="btn btn-outline" onclick="showUploadModal()">+ Upload Content</button>
+      <button class="btn btn-orange" onclick="showUploadModal()">📦 Update Plan</button>
+    </div>
+  </div>
+
+  <div class="content">
+    <!-- EARNINGS BANNER -->
+    <div class="earnings-banner">
+      <div>
+        <div class="eb-greeting">Welcome back, Rahul 👋</div>
+        <div class="eb-title">You earned ₹1,592 this month 🎉</div>
+        <div class="eb-sub">From 8 active subscribers · Plan: ₹199/month · 80% commission</div>
+      </div>
+      <div class="eb-cards">
+        <div class="eb-card">
+          <div class="eb-card-val">₹1,592</div>
+          <div class="eb-card-label">This Month</div>
+        </div>
+        <div class="eb-card green">
+          <div class="eb-card-val">₹8,760</div>
+          <div class="eb-card-label">Total Earned</div>
+        </div>
+        <div class="eb-card">
+          <div class="eb-card-val">₹4,000</div>
+          <div class="eb-card-label">Potential (20 members)</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- STATS -->
+    <div class="stats-row">
+      <div class="stat-card"><div class="stat-icon">👥</div><div class="stat-val">8</div><div class="stat-label">Active Subscribers</div><div class="stat-change up">↑ 2 this month</div></div>
+      <div class="stat-card"><div class="stat-icon">⭐</div><div class="stat-val">4.9</div><div class="stat-label">Avg Rating</div><div class="stat-change up">From 127 reviews</div></div>
+      <div class="stat-card"><div class="stat-icon">💬</div><div class="stat-val">5</div><div class="stat-label">Unread Messages</div><div class="stat-change" style="color:var(--blue);">Reply pending</div></div>
+      <div class="stat-card"><div class="stat-icon">📊</div><div class="stat-val">92%</div><div class="stat-label">Member Retention</div><div class="stat-change up">↑ 5% vs last month</div></div>
+    </div>
+
+    <!-- ROW 1 -->
+    <div class="grid-2">
+      <!-- REVENUE CHART -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">💰 Monthly Earnings</div>
+          <span style="font-size:11px;color:var(--muted);">Last 6 months</span>
+        </div>
+        <div class="bar-chart">
+          <div class="bar-col"><div class="bar-val">₹800</div><div class="bar" style="height:45%;"></div><div class="bar-label">Jan</div></div>
+          <div class="bar-col"><div class="bar-val">₹960</div><div class="bar" style="height:55%;"></div><div class="bar-label">Feb</div></div>
+          <div class="bar-col"><div class="bar-val">₹1120</div><div class="bar" style="height:63%;"></div><div class="bar-label">Mar</div></div>
+          <div class="bar-col"><div class="bar-val">₹1280</div><div class="bar" style="height:72%;"></div><div class="bar-label">Apr</div></div>
+          <div class="bar-col"><div class="bar-val">₹1440</div><div class="bar" style="height:81%;"></div><div class="bar-label">May</div></div>
+          <div class="bar-col"><div class="bar-val">₹1592</div><div class="bar" style="height:90%;box-shadow:0 0 12px var(--orange);"></div><div class="bar-label" style="color:var(--orange);font-weight:700;">Jun</div></div>
+        </div>
+        <div style="display:flex;gap:16px;margin-top:14px;padding-top:12px;border-top:1px solid var(--border);font-size:12px;">
+          <div><span style="color:var(--muted);">Per subscriber: </span><strong style="color:var(--orange);">₹159.20</strong></div>
+          <div><span style="color:var(--muted);">Platform cut: </span><strong>₹39.80</strong></div>
+          <div><span style="color:var(--muted);">Payout date: </span><strong>June 30</strong></div>
+        </div>
+      </div>
+
+      <!-- SUBSCRIBERS -->
+      <div class="card">
+        <div class="card-header"><div class="card-title">👥 Active Subscribers</div><span class="view-all">View All (8)</span></div>
+        <div class="subscriber-item">
+          <div class="sub-av" style="background:linear-gradient(135deg,#ff6b00,#ff9500);">A</div>
+          <div style="flex:1;">
+            <div class="sub-name">Amit Kumar</div>
+            <div class="sub-progress"><div class="mini-progress"><div class="mini-progress-fill" style="width:46%"></div></div><div class="mini-progress-val">Day 14</div></div>
+          </div>
+          <span class="sub-status active">Active</span>
+        </div>
+        <div class="subscriber-item">
+          <div class="sub-av" style="background:linear-gradient(135deg,#6366f1,#8b5cf6);">S</div>
+          <div style="flex:1;">
+            <div class="sub-name">Sneha Mishra</div>
+            <div class="sub-progress"><div class="mini-progress"><div class="mini-progress-fill" style="width:78%"></div></div><div class="mini-progress-val">Day 24</div></div>
+          </div>
+          <span class="sub-status active">Active</span>
+        </div>
+        <div class="subscriber-item">
+          <div class="sub-av" style="background:linear-gradient(135deg,#22c55e,#10b981);">R</div>
+          <div style="flex:1;">
+            <div class="sub-name">Rohit Patel</div>
+            <div class="sub-progress"><div class="mini-progress"><div class="mini-progress-fill" style="width:20%"></div></div><div class="mini-progress-val">Day 6</div></div>
+          </div>
+          <span class="sub-status new">🆕 New</span>
+        </div>
+        <div class="subscriber-item">
+          <div class="sub-av" style="background:linear-gradient(135deg,#eab308,#f59e0b);">N</div>
+          <div style="flex:1;">
+            <div class="sub-name">Neha Singh</div>
+            <div class="sub-progress"><div class="mini-progress"><div class="mini-progress-fill" style="width:93%"></div></div><div class="mini-progress-val">Day 28</div></div>
+          </div>
+          <span class="sub-status active">Active</span>
+        </div>
+        <a href="messages.html" class="btn btn-outline" style="width:100%;text-align:center;margin-top:10px;font-size:12px;padding:9px;">View All Subscribers</a>
+      </div>
+    </div>
+
+    <!-- ROW 2 -->
+    <div class="grid-3">
+      <!-- UPLOAD CONTENT -->
+      <div class="card">
+        <div class="card-header"><div class="card-title">📤 Upload Content</div></div>
+        <div class="upload-grid">
+          <div class="upload-item" onclick="showUploadModal()"><div class="upload-icon">🏋️</div><div class="upload-label">Workout Plan</div><div class="upload-sub">PDF or text</div></div>
+          <div class="upload-item" onclick="showUploadModal()"><div class="upload-icon">🥗</div><div class="upload-label">Diet Plan</div><div class="upload-sub">PDF or text</div></div>
+          <div class="upload-item" onclick="showUploadModal()"><div class="upload-icon">🎥</div><div class="upload-label">Exercise Video</div><div class="upload-sub">MP4 / YouTube</div></div>
+          <div class="upload-item" onclick="showUploadModal()"><div class="upload-icon">📸</div><div class="upload-label">Progress Photo</div><div class="upload-sub">JPG / PNG</div></div>
+        </div>
+        <button class="btn btn-orange" style="width:100%;margin-top:12px;padding:10px;" onclick="showUploadModal()">+ Upload New Content</button>
+      </div>
+
+      <!-- MESSAGES -->
+      <div class="card">
+        <div class="card-header"><div class="card-title">💬 Member Messages</div><a href="messages.html" class="view-all">View All</a></div>
+        <a href="messages.html" style="text-decoration:none;color:inherit;">
+          <div class="msg-item">
+            <div class="msg-av" style="background:linear-gradient(135deg,#ff6b00,#ff9500);">A</div>
+            <div style="flex:1;min-width:0;"><div class="msg-name">Amit Kumar</div><div class="msg-preview-text">Should I do squats before leg press?</div></div>
+            <div class="unread-dot"></div>
+          </div>
+        </a>
+        <a href="messages.html" style="text-decoration:none;color:inherit;">
+          <div class="msg-item">
+            <div class="msg-av" style="background:linear-gradient(135deg,#6366f1,#8b5cf6);">S</div>
+            <div style="flex:1;min-width:0;"><div class="msg-name">Sneha Mishra</div><div class="msg-preview-text">Lost 1.5 kg this week! 🎉</div></div>
+            <div class="unread-dot"></div>
+          </div>
+        </a>
+        <a href="messages.html" style="text-decoration:none;color:inherit;">
+          <div class="msg-item">
+            <div class="msg-av" style="background:linear-gradient(135deg,#22c55e,#10b981);">R</div>
+            <div style="flex:1;min-width:0;"><div class="msg-name">Rohit Patel</div><div class="msg-preview-text">Can I substitute the paneer with chicken?</div></div>
+          </div>
+        </a>
+        <a href="messages.html" class="btn btn-orange" style="width:100%;text-align:center;margin-top:10px;font-size:12px;padding:9px;display:block;">Reply to Messages</a>
+      </div>
+
+      <!-- REVIEWS -->
+      <div class="card">
+        <div class="card-header"><div class="card-title">⭐ Recent Reviews</div><span class="view-all">View All (127)</span></div>
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;background:var(--surface);border-radius:10px;padding:12px;">
+          <div style="font-size:36px;font-weight:900;color:var(--orange);">4.9</div>
+          <div><div style="font-size:16px;">⭐⭐⭐⭐⭐</div><div style="font-size:12px;color:var(--muted);margin-top:4px;">127 total reviews</div></div>
+        </div>
+        <div class="review-mini">
+          <div class="review-mini-header"><div class="rm-av" style="background:linear-gradient(135deg,#ff6b00,#ff9500);">A</div><div><div class="rm-name">Amit Kumar</div><div class="rm-stars">⭐⭐⭐⭐⭐</div></div></div>
+          <div class="rm-text">"Lost 8 kg in 2 months! Diet plan is practical and easy to follow. 100% recommend!"</div>
+        </div>
+        <div class="review-mini">
+          <div class="review-mini-header"><div class="rm-av" style="background:linear-gradient(135deg,#22c55e,#10b981);">R</div><div><div class="rm-name">Rohit Patel</div><div class="rm-stars">⭐⭐⭐⭐⭐</div></div></div>
+          <div class="rm-text">"Exercise videos are super helpful. Trainer is very supportive and replies fast!"</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ROW 3 -->
+    <div class="grid-2">
+      <!-- MY CONTENT -->
+      <div class="card">
+        <div class="card-header"><div class="card-title">📁 My Plan Content</div><button class="btn btn-outline" style="font-size:11px;padding:6px 12px;" onclick="showUploadModal()">+ Add</button></div>
+        <div class="content-item"><div class="ci-icon">📋</div><div class="ci-name">Week 1 — Full Body Program</div><div class="ci-meta">PDF · 12 exercises</div><div class="ci-actions"><button class="icon-btn">✏️</button><button class="icon-btn">🗑️</button></div></div>
+        <div class="content-item"><div class="ci-icon">📋</div><div class="ci-name">Week 2 — Push/Pull/Legs</div><div class="ci-meta">PDF · 18 exercises</div><div class="ci-actions"><button class="icon-btn">✏️</button><button class="icon-btn">🗑️</button></div></div>
+        <div class="content-item"><div class="ci-icon">🥗</div><div class="ci-name">Indian Diet Plan — 1800 cal</div><div class="ci-meta">PDF · Breakfast, Lunch, Dinner</div><div class="ci-actions"><button class="icon-btn">✏️</button><button class="icon-btn">🗑️</button></div></div>
+        <div class="content-item"><div class="ci-icon">🎥</div><div class="ci-name">Squat Form Guide</div><div class="ci-meta">Video · 5:32 min</div><div class="ci-actions"><button class="icon-btn">✏️</button><button class="icon-btn">🗑️</button></div></div>
+        <div class="content-item"><div class="ci-icon">🎥</div><div class="ci-name">Deadlift Tutorial</div><div class="ci-meta">Video · 7:15 min</div><div class="ci-actions"><button class="icon-btn">✏️</button><button class="icon-btn">🗑️</button></div></div>
+      </div>
+
+      <!-- QR + SHARE -->
+      <div>
+        <!-- PAYMENT SETUP CARD -->
+        <div class="qr-card" style="margin-bottom:16px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+            <div><div style="font-size:14px;font-weight:700;">💳 Payment Setup</div><div style="font-size:11px;color:var(--muted);margin-top:2px;">Members pay you directly</div></div>
+            <span style="font-size:10px;font-weight:700;padding:3px 10px;border-radius:20px;background:#22c55e18;color:#22c55e;">✓ Active</span>
+          </div>
+          <!-- TABS -->
+          <div style="display:flex;gap:5px;margin-bottom:14px;background:var(--card);border-radius:9px;padding:4px;">
+            <button onclick="setPayTab('upi',this)" id="tab-upi" style="flex:1;padding:7px;border-radius:7px;border:none;background:var(--orange);color:#fff;font-size:11px;font-weight:700;cursor:pointer;">📱 UPI ID</button>
+            <button onclick="setPayTab('qr',this)" id="tab-qr" style="flex:1;padding:7px;border-radius:7px;border:none;background:none;color:var(--muted);font-size:11px;font-weight:700;cursor:pointer;">🖼️ QR Code</button>
+          </div>
+          <!-- UPI PANEL -->
+          <div id="payPanel-upi">
+            <div style="font-size:11px;color:var(--muted);margin-bottom:5px;font-weight:600;text-transform:uppercase;letter-spacing:.3px;">Your UPI ID</div>
+            <div style="display:flex;gap:6px;margin-bottom:10px;">
+              <input type="text" id="trainerUpiInput" placeholder="e.g. rahul@phonepe" value="rahul.fitness@upi" style="flex:1;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:8px 10px;color:var(--text);font-size:13px;font-family:inherit;outline:none;"/>
+              <button onclick="saveUpiId()" style="background:var(--orange);border:none;border-radius:8px;padding:8px 12px;color:#fff;font-size:11px;font-weight:700;cursor:pointer;">Save</button>
+            </div>
+            <div style="font-size:11px;color:var(--muted);margin-bottom:5px;font-weight:600;text-transform:uppercase;letter-spacing:.3px;">UPI Mobile Number</div>
+            <div style="display:flex;gap:6px;">
+              <input type="tel" id="trainerMobileInput" placeholder="+91 98765 43210" value="+91 98765 43210" style="flex:1;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:8px 10px;color:var(--text);font-size:13px;font-family:inherit;outline:none;"/>
+              <button onclick="saveMobile()" style="background:var(--orange);border:none;border-radius:8px;padding:8px 12px;color:#fff;font-size:11px;font-weight:700;cursor:pointer;">Save</button>
+            </div>
+            <div style="margin-top:10px;background:var(--orange-dim);border:1px solid rgba(255,107,0,.3);border-radius:8px;padding:10px;font-size:11px;color:var(--muted);">
+              💡 Members pay on this UPI ID. Platform verifies screenshots. You get <strong style="color:var(--orange);">80%</strong> of every payment.
+            </div>
+          </div>
+          <!-- QR PANEL -->
+          <div id="payPanel-qr" style="display:none;">
+            <div style="font-size:11px;color:var(--muted);margin-bottom:8px;font-weight:600;text-transform:uppercase;letter-spacing:.3px;">Upload Your Payment QR</div>
+            <div id="qrPreviewBox" style="border:2px dashed var(--border);border-radius:10px;padding:20px;text-align:center;cursor:pointer;transition:border-color .2s;" onclick="document.getElementById('qrFileInput').click()" onmouseover="this.style.borderColor='var(--orange)'" onmouseout="this.style.borderColor='var(--border)'">
+              <div style="font-size:36px;margin-bottom:6px;">▣</div>
+              <div style="font-size:12px;font-weight:600;">Upload UPI QR Code</div>
+              <div style="font-size:11px;color:var(--muted);margin-top:2px;">From PhonePe / GPay / Paytm</div>
+            </div>
+            <input type="file" id="qrFileInput" style="display:none;" accept="image/*" onchange="previewQR(this)"/>
+            <button id="qrSaveBtn" onclick="saveQRCode()" style="display:none;width:100%;background:var(--orange);border:none;border-radius:8px;padding:9px;color:#fff;font-size:12px;font-weight:700;cursor:pointer;margin-top:8px;">💾 Save QR Code</button>
+          </div>
+          <!-- PROFILE LINK -->
+          <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);">
+            <div style="font-size:11px;font-weight:700;margin-bottom:6px;">🔗 Your Profile Link</div>
+            <div style="display:flex;gap:6px;">
+              <div style="flex:1;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-size:11px;color:var(--muted);overflow:hidden;white-space:nowrap;text-overflow:ellipsis;">fitcoachhub.com/trainer/rahul-sharma</div>
+              <button onclick="copyProfileLink()" style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:8px 10px;color:var(--muted);cursor:pointer;font-size:13px;">📋</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title" style="margin-bottom:12px;">💡 Grow Your Business</div>
+          <div style="font-size:13px;color:var(--muted);line-height:1.7;">
+            <div style="margin-bottom:8px;">📈 <strong style="color:var(--text)">8 subscribers × ₹159</strong> = ₹1,592/month</div>
+            <div style="margin-bottom:8px;">🎯 Get <strong style="color:var(--orange)">20 subscribers</strong> = ₹3,980/month</div>
+            <div style="margin-bottom:8px;">🔥 Get <strong style="color:var(--orange)">50 subscribers</strong> = ₹9,950/month</div>
+            <div>💡 Share your QR code in your gym to get more students!</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- UPLOAD MODAL -->
+<div id="uploadModal" style="display:none;position:fixed;inset:0;background:#000000cc;z-index:999;align-items:center;justify-content:center;">
+  <div style="background:var(--card);border:1px solid var(--border);border-radius:18px;padding:28px;width:440px;max-width:95vw;">
+    <div style="display:flex;justify-content:space-between;margin-bottom:20px;align-items:center;">
+      <div style="font-size:17px;font-weight:700;">📤 Upload Content</div>
+      <button onclick="document.getElementById('uploadModal').style.display='none'" style="background:none;border:none;color:var(--muted);font-size:22px;cursor:pointer;">×</button>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;">
+      <div id="ut1" onclick="selectType(this,'🏋️ Workout Plan')" style="border:2px solid var(--orange);border-radius:10px;padding:14px;text-align:center;cursor:pointer;background:var(--orange-dim);">
+        <div style="font-size:24px;margin-bottom:4px;">🏋️</div><div style="font-size:12px;font-weight:600;color:var(--orange);">Workout Plan</div>
+      </div>
+      <div id="ut2" onclick="selectType(this,'🥗 Diet Plan')" style="border:1px solid var(--border);border-radius:10px;padding:14px;text-align:center;cursor:pointer;">
+        <div style="font-size:24px;margin-bottom:4px;">🥗</div><div style="font-size:12px;font-weight:600;">Diet Plan</div>
+      </div>
+      <div id="ut3" onclick="selectType(this,'🎥 Exercise Video')" style="border:1px solid var(--border);border-radius:10px;padding:14px;text-align:center;cursor:pointer;">
+        <div style="font-size:24px;margin-bottom:4px;">🎥</div><div style="font-size:12px;font-weight:600;">Exercise Video</div>
+      </div>
+      <div id="ut4" onclick="selectType(this,'📸 Progress Photo')" style="border:1px solid var(--border);border-radius:10px;padding:14px;text-align:center;cursor:pointer;">
+        <div style="font-size:24px;margin-bottom:4px;">📸</div><div style="font-size:12px;font-weight:600;">Progress Photo</div>
+      </div>
+    </div>
+    <div style="margin-bottom:12px;"><label style="font-size:11px;color:var(--muted);font-weight:600;display:block;margin-bottom:6px;">TITLE</label><input type="text" placeholder="e.g. Week 3 — Leg Day Program" style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px 12px;color:var(--text);font-size:13px;font-family:inherit;outline:none;"/></div>
+    <div style="border:2px dashed var(--border);border-radius:10px;padding:20px;text-align:center;cursor:pointer;margin-bottom:16px;">
+      <div style="font-size:28px;margin-bottom:6px;">📁</div>
+      <div style="font-size:13px;color:var(--muted);">Drop file here or <span style="color:var(--orange);font-weight:600;">click to browse</span></div>
+      <div style="font-size:11px;color:var(--muted);margin-top:4px;">PDF, MP4, JPG, PNG supported</div>
+    </div>
+    <button class="btn btn-orange" style="width:100%;padding:12px;" onclick="uploadContent()">📤 Upload Now</button>
+  </div>
+</div>
+
+<script>
+function showUploadModal(){document.getElementById('uploadModal').style.display='flex';}
+
+// PAYMENT SETUP FUNCTIONS
+function setPayTab(tab, btn) {
+  ['upi','qr'].forEach(t => {
+    document.getElementById('payPanel-'+t).style.display = t===tab ? 'block' : 'none';
+    const b = document.getElementById('tab-'+t);
+    b.style.background = t===tab ? 'var(--orange)' : 'none';
+    b.style.color = t===tab ? '#fff' : 'var(--muted)';
+  });
+}
+function saveUpiId() {
+  const val = document.getElementById('trainerUpiInput').value.trim();
+  if (!val) { alert('Enter a valid UPI ID'); return; }
+  toast('✅ UPI ID saved: ' + val);
+  // In real app: update Firestore trainers/{uid}.upiId
+}
+function saveMobile() {
+  const val = document.getElementById('trainerMobileInput').value.trim();
+  if (!val) { alert('Enter a valid mobile number'); return; }
+  toast('✅ Mobile number saved: ' + val);
+  // In real app: update Firestore trainers/{uid}.upiMobile
+}
+function previewQR(input) {
+  if (input.files && input.files[0]) {
+    const url = URL.createObjectURL(input.files[0]);
+    document.getElementById('qrPreviewBox').innerHTML =
+      `<img src="${url}" style="width:140px;height:140px;object-fit:contain;border-radius:8px;border:2px solid var(--green);"/><div style="font-size:11px;color:var(--green);margin-top:6px;font-weight:600;">✓ QR Ready to Save</div>`;
+    document.getElementById('qrSaveBtn').style.display = 'block';
+  }
+}
+function saveQRCode() {
+  toast('✅ QR Code saved! Members can now scan to pay.');
+  document.getElementById('qrSaveBtn').textContent = '✓ Saved';
+  // In real app: upload to Firebase Storage → save URL in Firestore
+}
+function copyProfileLink() {
+  navigator.clipboard.writeText('https://fitcoachhub.com/trainer/rahul-sharma');
+  toast('📋 Profile link copied!');
+}
+function toast(msg, color='#22c55e') {
+  const t = document.createElement('div');
+  t.style.cssText = `position:fixed;bottom:24px;right:24px;background:${color};color:#fff;padding:12px 20px;border-radius:10px;font-weight:600;font-size:13px;z-index:9999;box-shadow:0 4px 20px rgba(0,0,0,.3);`;
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 3000);
+}
+function selectType(el,name){
+  ['ut1','ut2','ut3','ut4'].forEach(id=>{
+    const d=document.getElementById(id);
+    d.style.border='1px solid var(--border)';
+    d.style.background='';
+    d.querySelector('div:last-child').style.color='';
+  });
+  el.style.border='2px solid var(--orange)';
+  el.style.background='var(--orange-dim)';
+  el.querySelector('div:last-child').style.color='var(--orange)';
+}
+function uploadContent(){
+  document.getElementById('uploadModal').style.display='none';
+  const t=document.createElement('div');
+  t.style.cssText='position:fixed;bottom:24px;right:24px;background:#22c55e;color:#fff;padding:12px 20px;border-radius:10px;font-weight:600;font-size:13px;z-index:9999;';
+  t.textContent='✅ Content uploaded successfully!';
+  document.body.appendChild(t);
+  setTimeout(()=>t.remove(),3000);
+}
+document.querySelectorAll('.nav-item').forEach(item=>{
+  item.addEventListener('click',()=>{
+    document.querySelectorAll('.nav-item').forEach(i=>i.classList.remove('active'));
+    item.classList.add('active');
+  });
+});
+</script>
+<script>
+async function doLogout() {
+  await sb.auth.signOut();      // <- actual Supabase session clear
+  window.location.href = 'index.html';
+}
+</script>
+<script>
+(async function loadTrainerData() {
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session) { window.location.href = 'login.html'; return; }
+
+  const uid = session.user.id;
+
+  // Trainer data fetch
+  const { data: trainer } = await sb.from('trainers').select('*').eq('id', uid).single();
+  if (!trainer) return;
+
+  const firstName = trainer.name?.split(' ')[0] || 'Trainer';
+  const initial = firstName.charAt(0).toUpperCase();
+  const planPrice = trainer.plan_price || trainer.price_per_month || 199;
+  const commission = 0.8;
+  const perSubscriber = Math.round(planPrice * commission);
+
+  // Sidebar
+  document.querySelector('.trainer-name').textContent = trainer.name || 'Trainer';
+  document.querySelector('.trainer-av').textContent = initial;
+  if (!trainer.is_approved) {
+    document.querySelector('.trainer-status').textContent = '⏳ Pending Approval';
+    document.querySelector('.trainer-status').style.color = '#eab308';
+  }
+
+  // Active subscribers fetch
+  const { data: subs } = await sb
+    .from('subscriptions')
+    .select('*, users!member_id(name, first_name)')
+    .eq('trainer_id', uid)
+    .eq('status', 'active');
+
+  const totalStudents = subs?.length || 0;
+  const thisMonthEarnings = Math.round(totalStudents * perSubscriber);
+  const totalEarnings = trainer.total_earnings || 0;
+  const potential20 = Math.round(20 * perSubscriber);
+  const potential50 = Math.round(50 * perSubscriber);
+
+  // Banner
+  document.querySelector('.eb-greeting').textContent = `Welcome back, ${firstName} 👋`;
+  document.querySelector('.eb-title').textContent = totalStudents > 0
+    ? `You earned ₹${thisMonthEarnings.toLocaleString('en-IN')} this month 🎉`
+    : `Welcome to FitCoach Hub, ${firstName}! 🎉`;
+  document.querySelector('.eb-sub').textContent =
+    `From ${totalStudents} active subscribers · Plan: ₹${planPrice}/month · 80% commission`;
+
+  // Earning cards
+  const ebCards = document.querySelectorAll('.eb-card-val');
+  if (ebCards[0]) ebCards[0].textContent = `₹${thisMonthEarnings.toLocaleString('en-IN')}`;
+  if (ebCards[1]) ebCards[1].textContent = `₹${totalEarnings.toLocaleString('en-IN')}`;
+  if (ebCards[2]) ebCards[2].textContent = `₹${potential20.toLocaleString('en-IN')}`;
+
+  // Stats
+  const statVals = document.querySelectorAll('.stat-val');
+  if (statVals[0]) statVals[0].textContent = totalStudents;
+  if (statVals[1]) statVals[1].textContent = trainer.rating ? trainer.rating.toFixed(1) : '0.0';
+
+  // Per subscriber row
+  const payoutRow = document.querySelector('.bar-chart + div');
+  if (payoutRow) {
+    payoutRow.innerHTML = `
+      <div><span style="color:var(--muted);">Per subscriber: </span><strong style="color:var(--orange);">₹${perSubscriber}</strong></div>
+      <div><span style="color:var(--muted);">Platform cut: </span><strong>₹${planPrice - perSubscriber}</strong></div>
+      <div><span style="color:var(--muted);">Plan price: </span><strong>₹${planPrice}/mo</strong></div>`;
+  }
+
+  // Active Subscribers list
+  const subList = document.querySelector('.card:has(.subscriber-item)');
+  if (subList && subs) {
+    const subContainer = subList.querySelector('.subscriber-item')?.parentElement;
+    if (subContainer) {
+      // Pehle ke saare subscriber-item hata do
+      subContainer.querySelectorAll('.subscriber-item').forEach(el => el.remove());
+
+      if (subs.length === 0) {
+        subContainer.insertAdjacentHTML('afterbegin',
+          `<div style="text-align:center;padding:20px;color:var(--muted);font-size:13px;">No active subscribers yet</div>`);
+      } else {
+        subs.slice(0, 4).forEach(sub => {
+          const memberName = sub.users?.name || sub.users?.first_name || 'Member';
+          const initial2 = memberName.charAt(0).toUpperCase();
+          const startDate = new Date(sub.start_date);
+          const today = new Date();
+          const dayNum = Math.floor((today - startDate) / (1000 * 60 * 60 * 24)) + 1;
+          const colors = ['#ff6b00,#ff9500', '#6366f1,#8b5cf6', '#22c55e,#10b981', '#eab308,#f59e0b'];
+          const colorIdx = subs.indexOf(sub) % 4;
+
+          subContainer.insertAdjacentHTML('beforeend', `
+            <div class="subscriber-item">
+              <div class="sub-av" style="background:linear-gradient(135deg,${colors[colorIdx]});">${initial2}</div>
+              <div style="flex:1;">
+                <div class="sub-name">${memberName}</div>
+                <div class="sub-progress">
+                  <div class="mini-progress"><div class="mini-progress-fill" style="width:${Math.min(dayNum * 3, 100)}%"></div></div>
+                  <div class="mini-progress-val">Day ${dayNum}</div>
+                </div>
+              </div>
+              <span class="sub-status active">Active</span>
+            </div>`);
+        });
+      }
+    }
+  }
+
+  // Messages fetch (unread)
+  const { data: msgs } = await sb
+    .from('messages')
+    .select('*, users!sender_id(name, first_name)')
+    .eq('receiver_id', uid)
+    .eq('is_read', false)
+    .order('created_at', { ascending: false })
+    .limit(3);
+
+  if (statVals[2]) statVals[2].textContent = msgs?.length || 0;
+
+  // Grow your business
+  const allCards = document.querySelectorAll('.card');
+  allCards.forEach(card => {
+    const title = card.querySelector('.card-title');
+    if (title && title.textContent.includes('Grow')) {
+      const contentDiv = card.querySelector('div[style*="line-height"]');
+      if (contentDiv) {
+        contentDiv.innerHTML = `
+          <div style="margin-bottom:8px;">📈 <strong style="color:var(--text)">${totalStudents} subscribers × ₹${perSubscriber}</strong> = ₹${thisMonthEarnings.toLocaleString('en-IN')}/month</div>
+          <div style="margin-bottom:8px;">🎯 Get <strong style="color:var(--orange)">20 subscribers</strong> = ₹${potential20.toLocaleString('en-IN')}/month</div>
+          <div style="margin-bottom:8px;">🔥 Get <strong style="color:var(--orange)">50 subscribers</strong> = ₹${potential50.toLocaleString('en-IN')}/month</div>
+          <div>💡 Share your profile link in your gym to get more students!</div>`;
+      }
+    }
+  });
+})();
+</script>
+</body>
+</html>

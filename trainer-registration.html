@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase-config.js"></script>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>FitCoach Hub — Trainer Registration</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+*{margin:0;padding:0;box-sizing:border-box;}
+:root{--bg:#0a0a0a;--surface:#111;--card:#1a1a1a;--border:#2a2a2a;--orange:#ff6b00;--orange-dim:#ff6b0018;--orange-light:#ff8c33;--text:#f0f0f0;--muted:#888;--green:#22c55e;}
+body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;}
+
+nav{padding:16px 40px;display:flex;align-items:center;justify-content:space-between;background:var(--surface);border-bottom:1px solid var(--border);}
+.logo{font-size:20px;font-weight:800;color:var(--orange);text-decoration:none;}
+.btn{padding:9px 20px;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;border:none;text-decoration:none;display:inline-block;}
+.btn-outline{background:none;border:1px solid var(--border);color:var(--text);}
+.btn-orange{background:var(--orange);color:#fff;}
+
+.page{max-width:860px;margin:0 auto;padding:48px 20px;}
+.page-header{text-align:center;margin-bottom:48px;}
+.page-badge{display:inline-block;background:var(--orange-dim);color:var(--orange);border-radius:20px;padding:5px 16px;font-size:12px;font-weight:700;margin-bottom:14px;}
+.page-title{font-size:36px;font-weight:800;margin-bottom:10px;}
+.page-sub{font-size:15px;color:var(--muted);}
+
+/* STEPS PROGRESS */
+.progress-steps{display:flex;align-items:center;justify-content:center;gap:0;margin-bottom:40px;}
+.ps{display:flex;align-items:center;gap:8px;}
+.ps-num{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;border:2px solid var(--border);color:var(--muted);}
+.ps-num.active{background:var(--orange);border-color:var(--orange);color:#fff;}
+.ps-num.done{background:var(--green);border-color:var(--green);color:#fff;}
+.ps-label{font-size:12px;color:var(--muted);font-weight:500;}
+.ps-label.active{color:var(--orange);}
+.ps-line{width:60px;height:2px;background:var(--border);margin:0 8px;}
+.ps-line.done{background:var(--green);}
+
+/* FORM */
+.form-section{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:32px;margin-bottom:20px;}
+.form-section-title{font-size:17px;font-weight:700;margin-bottom:24px;display:flex;align-items:center;gap:8px;}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+.form-group{display:flex;flex-direction:column;gap:6px;}
+.form-group.full{grid-column:1/-1;}
+label{font-size:12px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.3px;}
+input,select,textarea{background:var(--surface);border:1px solid var(--border);border-radius:9px;padding:11px 14px;color:var(--text);font-size:14px;font-family:inherit;outline:none;transition:border-color .2s;}
+input:focus,select:focus,textarea:focus{border-color:var(--orange);}
+input::placeholder,textarea::placeholder{color:var(--muted);}
+select option{background:var(--surface);}
+
+/* PHOTO UPLOAD */
+.photo-upload{border:2px dashed var(--border);border-radius:12px;padding:32px;text-align:center;cursor:pointer;transition:border-color .2s;}
+.photo-upload:hover{border-color:var(--orange);}
+.photo-upload-icon{font-size:40px;margin-bottom:10px;}
+.photo-upload-text{font-size:14px;color:var(--muted);}
+.photo-upload-text span{color:var(--orange);font-weight:600;}
+
+/* SPECIALIZATIONS */
+.spec-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
+.spec-item{border:1px solid var(--border);border-radius:10px;padding:12px;text-align:center;cursor:pointer;transition:all .2s;font-size:13px;}
+.spec-item:hover,.spec-item.selected{border-color:var(--orange);background:var(--orange-dim);color:var(--orange);}
+.spec-icon{font-size:20px;margin-bottom:6px;}
+
+/* PRICE SLIDER */
+.price-display{font-size:36px;font-weight:800;color:var(--orange);text-align:center;margin:16px 0;}
+input[type=range]{width:100%;-webkit-appearance:none;height:6px;background:var(--border);border-radius:3px;outline:none;}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:22px;height:22px;border-radius:50%;background:var(--orange);cursor:pointer;}
+
+/* BENEFITS LIST */
+.benefits{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:16px;}
+.benefit{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);}
+.benefit::before{content:'✓';color:var(--green);font-weight:700;}
+
+/* SUBMIT */
+.form-actions{display:flex;gap:12px;justify-content:flex-end;margin-top:24px;}
+
+@media(max-width:600px){
+  .form-grid{grid-template-columns:1fr;}
+  .spec-grid{grid-template-columns:1fr 1fr;}
+  .benefits{grid-template-columns:1fr;}
+  nav{padding:14px 20px;}
+}
+</style>
+</head>
+<body>
+<nav>
+  <a href="index.html" class="logo">⚡ FitCoach Hub</a>
+  <a href="index.html" class="btn btn-outline">← Back to Home</a>
+</nav>
+
+<div class="page">
+  <div class="page-header">
+    <div class="page-badge">💰 EARN UP TO ₹50,000/MONTH</div>
+    <div class="page-title">Become a FitCoach Trainer</div>
+    <div class="page-sub">Share your expertise, build your client base, earn from anywhere</div>
+  </div>
+
+  <!-- PROGRESS -->
+  <div class="progress-steps">
+    <div class="ps"><div class="ps-num active">1</div><div class="ps-label active">Basic Info</div></div>
+    <div class="ps-line"></div>
+    <div class="ps"><div class="ps-num">2</div><div class="ps-label">Experience</div></div>
+    <div class="ps-line"></div>
+    <div class="ps"><div class="ps-num">3</div><div class="ps-label">Plan Setup</div></div>
+    <div class="ps-line"></div>
+    <div class="ps"><div class="ps-num">4</div><div class="ps-label">Review</div></div>
+  </div>
+
+  <!-- STEP 1: BASIC INFO -->
+  <div class="form-section" id="step1">
+    <div class="form-section-title">👤 Basic Information</div>
+
+    <!-- Photo Upload -->
+    <div class="photo-upload" onclick="document.getElementById('photoInput').click()" style="margin-bottom:24px;">
+      <div class="photo-upload-icon">📷</div>
+      <div class="photo-upload-text">Click to upload your <span>profile photo</span><br/><small>JPG or PNG, max 2MB</small></div>
+      <input type="file" id="photoInput" style="display:none;" accept="image/*" onchange="previewPhoto(this)"/>
+    </div>
+
+    <div class="form-grid">
+      <div class="form-group"><label>First Name *</label><input type="text" id="trFirst" placeholder="Rahul"/></div>
+      <div class="form-group"><label>Last Name *</label><input type="text" id="trLast" placeholder="Sharma"/></div>
+      <div class="form-group"><label>Email *</label><input type="email" id="trEmail" placeholder="rahul@gmail.com"/></div>
+      <div class="form-group"><label>Phone *</label><input type="tel" id="trPhone" placeholder="+91 98765 43210"/></div>
+      <div class="form-group"><label>City *</label><input type="text" id="trCity" placeholder="Moradabad, UP"/></div>
+      <div class="form-group"><label>Gender</label>
+        <select><option>Select...</option><option>Male</option><option>Female</option><option>Other</option></select>
+      </div>
+      <div class="form-group full"><label>Bio (Tell members about yourself) *</label>
+        <textarea rows="4" id="trBio" placeholder="I'm a certified fitness trainer with 4 years of experience. I specialize in weight loss and helping beginners start their fitness journey..."></textarea>
+      </div>
+    </div>
+    <div class="form-actions"><button class="btn btn-orange" onclick="goStep(2)">Next: Experience →</button></div>
+  </div>
+
+  <!-- STEP 2: EXPERIENCE (hidden initially) -->
+  <div class="form-section" id="step2" style="display:none;">
+    <div class="form-section-title">🏆 Experience & Certifications</div>
+    <div class="form-grid">
+      <div class="form-group"><label>Years of Experience *</label>
+        <select id="trExp"><option value="0">Select...</option><option value="1">1 year</option><option value="2">2 years</option><option value="4">3-4 years</option><option value="5">5+ years</option><option value="10">10+ years</option></select>
+      </div>
+      <div class="form-group"><label>Primary Certification *</label>
+        <select id="trCert"><option>Select...</option><option>ACE Certified</option><option>ISSA Certified</option><option>NSCA Certified</option><option>Gold's Gym Certified</option><option>State Sports Authority</option><option>Other</option></select>
+      </div>
+      <div class="form-group full"><label>Certification Details</label><input type="text" id="trCertDetail" placeholder="e.g. ACE Personal Trainer Certification, 2022"/></div>
+      <div class="form-group full"><label>Upload Certification (optional)</label>
+        <div class="photo-upload" style="padding:16px;" onclick="document.getElementById('certInput').click()">
+          <div class="photo-upload-text">📄 <span>Upload Certificate</span> (PDF or Image)</div>
+          <input type="file" id="certInput" style="display:none;"/>
+        </div>
+      </div>
+    </div>
+
+    <div style="margin-top:20px;margin-bottom:12px;font-size:13px;font-weight:600;">Specializations (Select all that apply)</div>
+    <div class="spec-grid">
+      <div class="spec-item" onclick="this.classList.toggle('selected')"><div class="spec-icon">⚖️</div>Weight Loss</div>
+      <div class="spec-item selected" onclick="this.classList.toggle('selected')"><div class="spec-icon">💪</div>Muscle Gain</div>
+      <div class="spec-item" onclick="this.classList.toggle('selected')"><div class="spec-icon">🔥</div>Fat Loss</div>
+      <div class="spec-item" onclick="this.classList.toggle('selected')"><div class="spec-icon">🏋️</div>Strength Training</div>
+      <div class="spec-item" onclick="this.classList.toggle('selected')"><div class="spec-icon">👩</div>Women Fitness</div>
+      <div class="spec-item" onclick="this.classList.toggle('selected')"><div class="spec-icon">🧘</div>Yoga & Flexibility</div>
+      <div class="spec-item" onclick="this.classList.toggle('selected')"><div class="spec-icon">🥗</div>Nutrition & Diet</div>
+      <div class="spec-item" onclick="this.classList.toggle('selected')"><div class="spec-icon">🏃</div>Cardio & Endurance</div>
+      <div class="spec-item" onclick="this.classList.toggle('selected')"><div class="spec-icon">🥊</div>Sports Fitness</div>
+    </div>
+    <div class="form-actions">
+      <button class="btn btn-outline" onclick="goStep(1)">← Back</button>
+      <button class="btn btn-orange" onclick="goStep(3)">Next: Plan Setup →</button>
+    </div>
+  </div>
+
+  <!-- STEP 3: PLAN SETUP -->
+  <div class="form-section" id="step3" style="display:none;">
+    <div class="form-section-title">📦 Plan Setup & Pricing</div>
+    <div class="form-grid">
+      <div class="form-group full"><label>Plan Name *</label><input type="text" id="trPlanName" placeholder="e.g. Weight Loss Pro Monthly Plan"/></div>
+      <div class="form-group full"><label>Plan Description</label><textarea rows="3" id="trPlanDesc" placeholder="What will members get? What makes your plan special?"></textarea></div>
+    </div>
+    <div style="margin:20px 0 8px;font-size:13px;font-weight:600;">Monthly Price</div>
+    <div class="price-display" id="priceDisplay">₹199</div>
+    <input type="range" id="trPrice" min="149" max="999" value="199" step="50" oninput="document.getElementById('priceDisplay').textContent='₹'+this.value"/>
+    <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-top:4px;"><span>₹149</span><span>₹999</span></div>
+
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px;margin-top:16px;font-size:13px;color:var(--muted);">
+      💡 You earn <strong style="color:var(--green);">80% of every sale</strong>. Platform commission is 20%. At ₹199/mo with 50 students = <strong style="color:var(--orange);">₹7,960/month</strong> for you!
+    </div>
+
+    <div style="margin-top:20px;font-size:13px;font-weight:600;margin-bottom:12px;">What's included in your plan?</div>
+    <div class="benefits">
+      <div class="benefit"><input type="checkbox" checked/> Weekly Workout Plans</div>
+      <div class="benefit"><input type="checkbox" checked/> Diet / Meal Plans</div>
+      <div class="benefit"><input type="checkbox" checked/> Exercise Videos</div>
+      <div class="benefit"><input type="checkbox"/> Progress Photo Reviews</div>
+      <div class="benefit"><input type="checkbox"/> Video Call Sessions</div>
+      <div class="benefit"><input type="checkbox"/> Custom Supplement Guide</div>
+    </div>
+
+    <!-- VIDEO UPLOAD SECTION -->
+    <div style="margin-top:28px;padding-top:24px;border-top:1px solid var(--border);">
+      <div style="font-size:15px;font-weight:700;margin-bottom:6px;">🎥 Upload Exercise Videos</div>
+      <div style="font-size:13px;color:var(--muted);margin-bottom:16px;">Members who buy your plan will watch these videos to learn exercises. Upload demo videos for each exercise in your plan.</div>
+
+      <!-- VIDEO UPLOAD METHODS -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px;">
+        <div id="uploadMethodFile" onclick="selectVideoMethod('file')" style="border:2px solid var(--orange);border-radius:12px;padding:16px;text-align:center;cursor:pointer;background:var(--orange-dim);">
+          <div style="font-size:28px;margin-bottom:6px;">📁</div>
+          <div style="font-size:13px;font-weight:700;color:var(--orange);">Upload Video File</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:3px;">MP4, MOV, AVI (max 200MB)</div>
+        </div>
+        <div id="uploadMethodYT" onclick="selectVideoMethod('youtube')" style="border:1px solid var(--border);border-radius:12px;padding:16px;text-align:center;cursor:pointer;">
+          <div style="font-size:28px;margin-bottom:6px;">▶️</div>
+          <div style="font-size:13px;font-weight:700;">YouTube / Link</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:3px;">Paste YouTube or Google Drive link</div>
+        </div>
+      </div>
+
+      <!-- FILE UPLOAD AREA -->
+      <div id="fileUploadArea">
+        <div style="border:2px dashed var(--border);border-radius:12px;padding:28px;text-align:center;cursor:pointer;transition:border-color .2s;margin-bottom:16px;" id="videoDropZone" onclick="document.getElementById('videoFileInput').click()" ondragover="event.preventDefault();this.style.borderColor='var(--orange)'" ondragleave="this.style.borderColor='var(--border)'" ondrop="handleVideoDrop(event)">
+          <div style="font-size:40px;margin-bottom:10px;">🎬</div>
+          <div style="font-size:14px;font-weight:600;margin-bottom:4px;">Drop video here or <span style="color:var(--orange);">click to browse</span></div>
+          <div style="font-size:12px;color:var(--muted);">MP4, MOV, AVI · Max 200MB per video</div>
+          <input type="file" id="videoFileInput" style="display:none;" accept="video/*" multiple onchange="handleVideoFiles(this)"/>
+        </div>
+      </div>
+
+      <!-- YOUTUBE LINK AREA (hidden by default) -->
+      <div id="youtubeLinkArea" style="display:none;margin-bottom:16px;">
+        <div style="display:flex;gap:8px;margin-bottom:8px;">
+          <input type="url" id="ytLinkInput" style="flex:1;background:var(--surface);border:1px solid var(--border);border-radius:9px;padding:11px 14px;color:var(--text);font-size:13px;font-family:inherit;outline:none;" placeholder="https://youtube.com/watch?v=... or Google Drive link"/>
+          <button onclick="addYouTubeLink()" style="background:var(--orange);color:#fff;border:none;border-radius:9px;padding:11px 18px;font-size:13px;font-weight:600;cursor:pointer;">+ Add</button>
+        </div>
+        <div style="font-size:12px;color:var(--muted);">💡 Tip: Upload to YouTube as Unlisted, then paste link here. Members can watch directly.</div>
+      </div>
+
+      <!-- VIDEO LIST -->
+      <div id="videoList" style="display:flex;flex-direction:column;gap:10px;"></div>
+
+      <!-- ADD MORE -->
+      <div style="text-align:center;margin-top:16px;">
+        <button onclick="document.getElementById('videoFileInput').click()" style="background:none;border:1px dashed var(--border);color:var(--muted);border-radius:9px;padding:10px 20px;font-size:13px;cursor:pointer;transition:all .2s;" onmouseover="this.style.borderColor='var(--orange)';this.style.color='var(--orange)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--muted)'">+ Add Another Video</button>
+      </div>
+    </div>
+
+    <div class="form-actions" style="margin-top:24px;">
+      <button class="btn btn-outline" onclick="goStep(2)">← Back</button>
+      <button class="btn btn-orange" onclick="goStep(4)">Review & Submit →</button>
+    </div>
+  </div>
+
+  <!-- STEP 4: REVIEW -->
+  <div class="form-section" id="step4" style="display:none;">
+    <div class="form-section-title">✅ Review & Submit</div>
+    <div style="background:var(--surface);border:1px solid var(--green);border-radius:12px;padding:20px;margin-bottom:20px;">
+      <div style="font-size:14px;font-weight:700;color:var(--green);margin-bottom:12px;">✅ Your application is ready!</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:13px;" id="reviewGrid">
+  <!-- Dynamic data yahan aayega -->
+</div>
+    </div>
+    <div style="background:var(--orange-dim);border:1px solid rgba(255,107,0,.3);border-radius:10px;padding:14px;font-size:13px;color:var(--muted);margin-bottom:20px;">
+      ⏳ After submitting, our team will review your profile within <strong style="color:var(--orange);">24-48 hours</strong>. You'll get an email once approved.
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:20px;">
+      <input type="checkbox" id="terms"/>
+      <label for="terms" style="font-size:13px;cursor:pointer;">I agree to FitCoach Hub <span style="color:var(--orange);">Terms & Conditions</span> and <span style="color:var(--orange);">Trainer Guidelines</span></label>
+    </div>
+    <div class="form-actions">
+      <button class="btn btn-outline" onclick="goStep(3)">← Back</button>
+      <button class="btn btn-orange" onclick="submitForm()" style="padding:11px 28px;">🚀 Go To Dashboard</button>
+    </div>
+  </div>
+</div>
+
+<script>
+function goStep(n){
+  [1,2,3,4].forEach(i=>{
+    document.getElementById('step'+i).style.display = i===n ? 'block' : 'none';
+  });
+  document.querySelectorAll('.ps-num').forEach((el,idx)=>{
+    el.className='ps-num';
+    if(idx+1<n) el.classList.add('done'), el.textContent='✓';
+    else if(idx+1===n) el.classList.add('active');
+  });
+  document.querySelectorAll('.ps-label').forEach((el,idx)=>{
+    el.className='ps-label';
+    if(idx+1===n) el.classList.add('active');
+  });
+  document.querySelectorAll('.ps-line').forEach((el,idx)=>{
+    el.className='ps-line';
+    if(idx+1<n) el.classList.add('done');
+  });
+  // Step 4 pe real data fill karo
+  if (n === 4) {
+    const first = document.getElementById('trFirst')?.value.trim() || '-';
+    const last = document.getElementById('trLast')?.value.trim() || '-';
+    const city = document.getElementById('trCity')?.value.trim() || '-';
+    const exp = document.getElementById('trExp')?.value || '-';
+    const cert = document.getElementById('trCert')?.value || '-';
+    const price = document.getElementById('trPrice')?.value || '199';
+    const specs = getSelectedSpecs().join(', ') || '-';
+
+    const grid = document.getElementById('reviewGrid');
+    if (grid) {
+      grid.innerHTML = `
+        <div><span style="color:var(--muted);">Name:</span> ${first} ${last}</div>
+        <div><span style="color:var(--muted);">Experience:</span> ${exp}</div>
+        <div><span style="color:var(--muted);">Plan Price:</span> <strong style="color:var(--orange);">₹${price}/month</strong></div>
+        <div><span style="color:var(--muted);">Certification:</span> ${cert}</div>
+        <div><span style="color:var(--muted);">Specialization:</span> ${specs}</div>
+        <div><span style="color:var(--muted);">City:</span> ${city}</div>
+      `;
+    }
+  }
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+// VIDEO UPLOAD FUNCTIONS
+let videoCount = 0;
+function selectVideoMethod(method){
+  document.getElementById('uploadMethodFile').style.border='1px solid var(--border)';
+  document.getElementById('uploadMethodFile').style.background='';
+  document.getElementById('uploadMethodFile').querySelector('div:nth-child(2)').style.color='';
+  document.getElementById('uploadMethodYT').style.border='1px solid var(--border)';
+  document.getElementById('uploadMethodYT').style.background='';
+  document.getElementById('fileUploadArea').style.display = method==='file' ? 'block' : 'none';
+  document.getElementById('youtubeLinkArea').style.display = method==='youtube' ? 'block' : 'none';
+  if(method==='file'){
+    document.getElementById('uploadMethodFile').style.border='2px solid var(--orange)';
+    document.getElementById('uploadMethodFile').style.background='var(--orange-dim)';
+    document.getElementById('uploadMethodFile').querySelector('div:nth-child(2)').style.color='var(--orange)';
+  } else {
+    document.getElementById('uploadMethodYT').style.border='2px solid var(--orange)';
+    document.getElementById('uploadMethodYT').style.background='var(--orange-dim)';
+  }
+}
+function handleVideoFiles(input){
+  Array.from(input.files).forEach(file=>{
+    addVideoCard(file.name, URL.createObjectURL(file), 'file', file);
+  });
+}
+function handleVideoDrop(e){
+  e.preventDefault();
+  document.getElementById('videoDropZone').style.borderColor='var(--border)';
+  Array.from(e.dataTransfer.files).filter(f=>f.type.startsWith('video/')).forEach(file=>{
+    addVideoCard(file.name, URL.createObjectURL(file), 'file', file);
+  });
+}
+function addYouTubeLink(){
+  const input = document.getElementById('ytLinkInput');
+  const url = input.value.trim();
+  if(!url){return;}
+  let title = 'Exercise Video ' + (videoCount+1);
+  addVideoCard(title, url, 'youtube', null);
+  input.value='';
+}
+function addVideoCard(name, url, type, fileObj){
+  videoCount++;
+  const id = 'vid_'+videoCount;
+  const list = document.getElementById('videoList');
+  const div = document.createElement('div');
+  div.id = id;
+  div.style.cssText='background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px;';
+
+  const isYT = type==='youtube';
+  const videoHTML = isYT
+    ? `<div style="background:#000;border-radius:8px;height:120px;display:flex;align-items:center;justify-content:center;font-size:32px;margin-bottom:12px;">▶️</div>`
+    : `<video src="${url}" controls style="width:100%;max-height:160px;border-radius:8px;margin-bottom:12px;background:#000;"></video>`;
+
+  div.innerHTML = `
+    ${videoHTML}
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
+      <div>
+        <label style="font-size:11px;color:var(--muted);font-weight:600;display:block;margin-bottom:4px;">VIDEO TITLE *</label>
+        <input type="text" value="${name.replace(/\.[^.]+$/,'')}" style="width:100%;background:var(--card);border:1px solid var(--border);border-radius:8px;padding:9px 12px;color:var(--text);font-size:13px;font-family:inherit;outline:none;" placeholder="e.g. Bench Press Tutorial"/>
+      </div>
+      <div>
+        <label style="font-size:11px;color:var(--muted);font-weight:600;display:block;margin-bottom:4px;">EXERCISE TYPE</label>
+        <select style="width:100%;background:var(--card);border:1px solid var(--border);border-radius:8px;padding:9px 12px;color:var(--text);font-size:13px;font-family:inherit;outline:none;">
+          <option>Chest</option><option>Back</option><option>Legs</option><option>Shoulders</option>
+          <option>Arms</option><option>Core</option><option>Cardio</option><option>Full Body</option>
+        </select>
+      </div>
+    </div>
+    <div style="margin-bottom:10px;">
+      <label style="font-size:11px;color:var(--muted);font-weight:600;display:block;margin-bottom:4px;">DESCRIPTION</label>
+      <input type="text" style="width:100%;background:var(--card);border:1px solid var(--border);border-radius:8px;padding:9px 12px;color:var(--text);font-size:13px;font-family:inherit;outline:none;" placeholder="e.g. How to do proper bench press form"/>
+    </div>
+    <div style="display:flex;align-items:center;justify-content:space-between;">
+      <div style="font-size:11px;color:var(--muted);">${isYT ? '🔗 YouTube Link' : '📁 '+name}</div>
+      <button onclick="removeVideo('${id}')" style="background:none;border:1px solid #ef444440;color:#ef4444;border-radius:7px;padding:5px 12px;font-size:12px;cursor:pointer;">🗑️ Remove</button>
+    </div>`;
+  list.appendChild(div);
+}
+function removeVideo(id){
+  const el=document.getElementById(id);
+  if(el){el.style.opacity='0';el.style.transition='opacity .3s';setTimeout(()=>el.remove(),300);}
+}
+
+function previewPhoto(input){
+  if(input.files && input.files[0]){
+    const reader=new FileReader();
+    reader.onload=e=>{
+      document.querySelector('.photo-upload').innerHTML=`<img src="${e.target.result}" style="width:100px;height:100px;border-radius:50%;object-fit:cover;"/>`;
+    };
+    reader.readAsDataURL(input.files[0]);
+  }
+}
+
+</script>
+<script>
+function getSelectedSpecs() {
+  const specs = [];
+  document.querySelectorAll('.spec-item.selected').forEach(el => {
+    specs.push(el.textContent.trim());
+  });
+  return specs;
+}
+
+async function submitForm() {
+  if (!document.getElementById('terms').checked) {
+    alert('Please agree to the Terms & Conditions');
+    return;
+  }
+
+  const first = document.getElementById('trFirst').value.trim();
+  const last = document.getElementById('trLast').value.trim();
+  const email = document.getElementById('trEmail').value.trim();
+  const phone = document.getElementById('trPhone').value.trim();
+  const city = document.getElementById('trCity').value.trim();
+  const bio = document.getElementById('trBio').value.trim();
+  const exp = document.getElementById('trExp').value;
+  const cert = document.getElementById('trCert').value;
+  const certDetail = document.getElementById('trCertDetail').value.trim();
+  const planName = document.getElementById('trPlanName').value.trim();
+  const planDesc = document.getElementById('trPlanDesc').value.trim();
+  const price = parseInt(document.getElementById('trPrice').value || '199');
+  const specs = getSelectedSpecs();
+
+  if (!first || !email || !phone || !city) {
+    alert('Please fill all required fields (Name, Email, Phone, City)');
+    goStep(1);
+    return;
+  }
+
+  const submitBtn = document.querySelector('#step4 .btn-orange');
+  submitBtn.textContent = '⏳ Submitting...';
+  submitBtn.disabled = true;
+
+  try {
+    // 1. Auth account banao
+    const tempPass = 'Fitcoach@' + Math.random().toString(36).slice(-6);
+    const { data: authData, error: authError } = await window.sb.auth.signUp({
+      email, password: tempPass
+    });
+
+    if (authError) {
+      alert('Error: ' + authError.message);
+      submitBtn.textContent = '🚀 Submit Application';
+      submitBtn.disabled = false;
+      return;
+    }
+
+    const uid = authData?.user?.id;
+    if (!uid) {
+      alert('Account creation failed. Email may already be registered.');
+      submitBtn.textContent = '🚀 Submit Application';
+      submitBtn.disabled = false;
+      return;
+    }
+
+    // 2. users table mein save
+    await window.sb.from('users').insert({
+      id: uid, email,
+      name: first + ' ' + last,
+      first_name: first, last_name: last,
+      phone, city, role: 'trainer',
+      avatar: '', created_at: new Date().toISOString(),
+      active_plan: null, is_active: true
+    });
+    // 3. trainers table mein save
+      const { error: trainerErr } = await window.sb.from('trainers').insert({
+      id: uid,
+      name: first + ' ' + last,
+      email,
+      phone,
+      city,
+      bio,
+      specializations: specs,
+      experience_years: parseInt(exp) || 0,
+      price_per_month: price,
+      plan_name: planName,
+      plan_price: price,
+      is_approved: true,
+      is_verified: false,
+      is_active: true,
+      rating: 0,
+      total_students: 0,
+      total_earnings: 0,
+      total_reviews: 0,
+      upi_id: '',
+      upi_mobile: '',
+      qr_image_url: '',
+      payment_method: '',
+      created_at: new Date().toISOString()
+       });
+
+if (trainerErr) {
+  console.error('Trainer insert error:', trainerErr);
+  alert('Trainer profile save failed: ' + trainerErr.message);
+  submitBtn.textContent = '🚀 Submit Application';
+  submitBtn.disabled = false;
+  return;
+}
+    // 4. Seedha trainer dashboard pe bhejo
+window.location.href = 'trainer-dashboard.html';
+
+  } catch (err) {
+    console.error(err);
+    alert('Something went wrong: ' + err.message);
+    submitBtn.textContent = '🚀 Submit Application';
+    submitBtn.disabled = false;
+  }
+}
+</script>
+</body>
+</html>

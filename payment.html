@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase-config.js"></script>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>FitCoach Hub — Complete Payment</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+*{margin:0;padding:0;box-sizing:border-box;}
+:root{--bg:#0a0a0a;--surface:#111;--card:#1a1a1a;--border:#2a2a2a;--orange:#ff6b00;--orange-dim:#ff6b0018;--orange-light:#ff8c33;--text:#f0f0f0;--muted:#888;--green:#22c55e;--red:#ef4444;--blue:#3b82f6;}
+body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;}
+nav{padding:14px 28px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+.logo{font-size:19px;font-weight:800;color:var(--orange);text-decoration:none;}
+.secure-badge{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--green);}
+
+.page{max-width:900px;margin:0 auto;padding:36px 20px;display:grid;grid-template-columns:1fr 380px;gap:28px;align-items:start;}
+
+/* LEFT COLUMN */
+.section-title{font-size:18px;font-weight:700;margin-bottom:16px;}
+
+/* PLAN SUMMARY */
+.plan-summary{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:20px;margin-bottom:20px;}
+.ps-trainer{display:flex;align-items:center;gap:14px;margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid var(--border);}
+.ps-av{width:52px;height:52px;border-radius:50%;background:linear-gradient(135deg,#ff6b00,#ff9500);display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:800;flex-shrink:0;}
+.ps-trainer-name{font-size:15px;font-weight:700;}
+.ps-spec{font-size:12px;color:var(--muted);margin-top:2px;}
+.ps-rating{font-size:12px;color:var(--text);margin-top:3px;}
+.ps-includes{display:flex;flex-direction:column;gap:7px;}
+.ps-include{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);}
+.ps-include::before{content:'✓';color:var(--green);font-weight:700;flex-shrink:0;}
+
+/* PAYMENT METHOD SELECTOR */
+.pay-methods{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:20px;margin-bottom:20px;}
+.pay-method-tabs{display:flex;gap:8px;margin-bottom:20px;}
+.pmt{flex:1;padding:12px 8px;border-radius:10px;border:2px solid var(--border);text-align:center;cursor:pointer;transition:all .2s;}
+.pmt:hover,.pmt.active{border-color:var(--orange);background:var(--orange-dim);}
+.pmt-icon{font-size:22px;margin-bottom:5px;}
+.pmt-label{font-size:11px;font-weight:600;color:var(--muted);}
+.pmt.active .pmt-label{color:var(--orange);}
+
+/* PAYMENT PANELS */
+.pay-panel{display:none;}
+.pay-panel.active{display:block;}
+
+/* RAZORPAY PANEL */
+.rp-info{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:16px;}
+.rp-info-row{display:flex;align-items:center;gap:8px;font-size:13px;margin-bottom:8px;}
+.rp-info-row:last-child{margin:0;}
+.rp-info-icon{font-size:16px;}
+.form-group{margin-bottom:14px;}
+.form-label{font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.3px;display:block;margin-bottom:6px;}
+.form-input{width:100%;background:var(--surface);border:1px solid var(--border);border-radius:9px;padding:11px 14px;color:var(--text);font-size:13px;font-family:inherit;outline:none;transition:border-color .2s;}
+.form-input:focus{border-color:var(--orange);}
+.form-input::placeholder{color:var(--muted);}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+
+/* UPI DIRECT PANEL */
+.upi-methods{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;}
+.upi-opt{border:1px solid var(--border);border-radius:10px;padding:14px;text-align:center;cursor:pointer;transition:all .2s;}
+.upi-opt:hover,.upi-opt.selected{border-color:var(--orange);background:var(--orange-dim);}
+.upi-opt-icon{font-size:24px;margin-bottom:4px;}
+.upi-opt-label{font-size:12px;font-weight:600;}
+.upi-opt.selected .upi-opt-label{color:var(--orange);}
+
+/* QR CODE */
+.qr-display{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;text-align:center;margin-bottom:16px;}
+.qr-image{width:160px;height:160px;background:var(--card);border-radius:10px;margin:12px auto;display:flex;align-items:center;justify-content:center;font-size:60px;border:2px solid var(--border);}
+.qr-name{font-size:14px;font-weight:700;margin-top:10px;}
+.qr-upi{font-size:12px;color:var(--orange);margin-top:4px;}
+.steps-list{display:flex;flex-direction:column;gap:8px;text-align:left;}
+.step-item{display:flex;gap:10px;align-items:flex-start;font-size:13px;color:var(--muted);}
+.step-num{width:22px;height:22px;border-radius:50%;background:var(--orange);color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;margin-top:1px;}
+
+/* UPI ID PANEL */
+.upi-id-box{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:16px;}
+.upi-copy-row{display:flex;align-items:center;gap:8px;background:var(--card);border:1px solid var(--border);border-radius:9px;padding:12px 14px;}
+.upi-id-text{flex:1;font-size:15px;font-weight:700;color:var(--orange);}
+.copy-btn{background:var(--orange-dim);border:1px solid rgba(255,107,0,.3);color:var(--orange);border-radius:7px;padding:5px 12px;font-size:12px;font-weight:600;cursor:pointer;}
+.upi-apps{display:flex;gap:10px;justify-content:center;margin-top:14px;flex-wrap:wrap;}
+.upi-app-btn{display:flex;align-items:center;gap:6px;background:var(--card);border:1px solid var(--border);border-radius:8px;padding:8px 14px;font-size:12px;font-weight:600;cursor:pointer;transition:all .2s;text-decoration:none;color:var(--text);}
+.upi-app-btn:hover{border-color:var(--orange);}
+
+/* SCREENSHOT UPLOAD */
+.screenshot-upload{border:2px dashed var(--border);border-radius:10px;padding:20px;text-align:center;cursor:pointer;transition:all .2s;}
+.screenshot-upload:hover,.screenshot-upload.has-file{border-color:var(--orange);background:var(--orange-dim);}
+
+/* RIGHT COLUMN - ORDER SUMMARY */
+.order-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:22px;position:sticky;top:20px;}
+.order-title{font-size:16px;font-weight:700;margin-bottom:18px;}
+.order-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border);font-size:13px;}
+.order-row:last-child{border:none;}
+.order-label{color:var(--muted);}
+.order-val{font-weight:600;}
+.order-total{font-size:16px!important;font-weight:800!important;}
+.order-total .order-val{color:var(--orange);font-size:20px;}
+
+/* COUPON */
+.coupon-row{display:flex;gap:8px;margin:14px 0;}
+.coupon-input{flex:1;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:9px 12px;color:var(--text);font-size:13px;font-family:inherit;outline:none;}
+.coupon-input:focus{border-color:var(--orange);}
+.coupon-btn{background:var(--orange-dim);border:1px solid rgba(255,107,0,.3);color:var(--orange);border-radius:8px;padding:9px 14px;font-size:12px;font-weight:700;cursor:pointer;}
+.coupon-success{background:#22c55e18;border:1px solid #22c55e30;border-radius:8px;padding:8px 12px;font-size:12px;color:var(--green);display:none;margin-top:4px;}
+
+/* PAY BUTTON */
+.pay-btn{width:100%;padding:15px;border-radius:11px;background:var(--orange);color:#fff;font-size:16px;font-weight:800;border:none;cursor:pointer;transition:all .2s;margin-top:16px;position:relative;overflow:hidden;}
+.pay-btn:hover{background:var(--orange-light);}
+.pay-btn:disabled{opacity:.6;cursor:not-allowed;}
+.safe-badges{display:flex;gap:10px;justify-content:center;margin-top:12px;flex-wrap:wrap;}
+.safe-badge{display:flex;align-items:center;gap:4px;font-size:11px;color:var(--muted);}
+
+/* SUCCESS MODAL */
+.success-modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.9);z-index:9999;align-items:center;justify-content:center;}
+.success-box{background:var(--card);border:1px solid var(--green);border-radius:18px;padding:40px 32px;text-align:center;max-width:420px;width:90%;}
+.success-emoji{font-size:64px;margin-bottom:16px;animation:bounce 1s ease;}
+@keyframes bounce{0%,100%{transform:scale(1);}50%{transform:scale(1.2);}}
+.success-title{font-size:24px;font-weight:800;margin-bottom:8px;color:var(--green);}
+.success-sub{font-size:14px;color:var(--muted);margin-bottom:24px;line-height:1.6;}
+
+/* ALERT */
+.alert{padding:12px 16px;border-radius:10px;font-size:13px;margin-bottom:14px;display:none;}
+.alert.error{background:#ef444418;border:1px solid #ef444430;color:var(--red);}
+.alert.success{background:#22c55e18;border:1px solid #22c55e30;color:var(--green);}
+.alert.show{display:block;}
+
+@media(max-width:768px){.page{grid-template-columns:1fr;}.form-row{grid-template-columns:1fr;}.upi-methods{grid-template-columns:1fr 1fr;}}
+</style>
+</head>
+<body>
+<nav>
+  <a href="index.html" class="logo">⚡ FitCoach Hub</a>
+  <div class="secure-badge">🔒 SSL Secured Checkout</div>
+</nav>
+
+<div class="page">
+  <!-- LEFT COLUMN -->
+  <div>
+    <div class="section-title">📦 Complete Your Purchase</div>
+
+    <!-- PLAN SUMMARY -->
+    <div class="plan-summary">
+      <div class="ps-trainer">
+        <div class="ps-av" id="trainerAvatar">R</div>
+        <div>
+          <div class="ps-trainer-name" id="trainerName">Rahul Sharma</div>
+          <div class="ps-spec" id="planName">⚖️ Weight Loss Pro</div>
+          <div class="ps-rating">⭐ 4.9 · 127 reviews · 4 yrs exp</div>
+        </div>
+      </div>
+      <div class="ps-includes">
+        <div class="ps-include">Daily Workout Plans (updated weekly)</div>
+        <div class="ps-include">Custom Indian Diet Chart</div>
+        <div class="ps-include">Exercise Videos with demonstrations</div>
+        <div class="ps-include">Direct Trainer Chat (reply within 24hrs)</div>
+        <div class="ps-include">Progress Tracking & Weekly Check-ins</div>
+        <div class="ps-include">30-day rolling plan · Cancel anytime</div>
+      </div>
+    </div>
+
+    <!-- PAYMENT METHOD SELECTION -->
+    <div class="pay-methods">
+      <div class="section-title" style="font-size:15px;">💳 Choose Payment Method</div>
+      <div class="pay-method-tabs">
+        <div class="pmt active" onclick="selectPayMethod('razorpay',this)">
+          <div class="pmt-icon">💳</div>
+          <div class="pmt-label">Card / NetBanking</div>
+        </div>
+        <div class="pmt" onclick="selectPayMethod('upi_qr',this)">
+          <div class="pmt-icon">📱</div>
+          <div class="pmt-label">Scan QR Code</div>
+        </div>
+        <div class="pmt" onclick="selectPayMethod('upi_id',this)">
+          <div class="pmt-icon">🏦</div>
+          <div class="pmt-label">UPI / PhonePe</div>
+        </div>
+      </div>
+
+      <div id="alertBox" class="alert"></div>
+
+      <!-- RAZORPAY PANEL -->
+      <div class="pay-panel active" id="panel-razorpay">
+        <div class="rp-info">
+          <div class="rp-info-row"><span class="rp-info-icon">🔒</span> SSL encrypted · Powered by Razorpay</div>
+          <div class="rp-info-row"><span class="rp-info-icon">💳</span> Credit / Debit Card · UPI · NetBanking · Wallets</div>
+          <div class="rp-info-row"><span class="rp-info-icon">🔄</span> Auto-renews every 30 days · Cancel anytime</div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Full Name (as on card)</label>
+          <input type="text" class="form-input" id="cardName" placeholder="Amit Kumar"/>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Email for Receipt</label>
+          <input type="email" class="form-input" id="cardEmail" placeholder="amit@gmail.com"/>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Phone</label>
+          <input type="tel" class="form-input" id="cardPhone" placeholder="+91 98765 43210"/>
+        </div>
+        <div style="background:var(--orange-dim);border:1px solid rgba(255,107,0,.3);border-radius:10px;padding:12px;font-size:12px;color:var(--muted);">
+          💡 Clicking "Pay Now" will open a secure Razorpay checkout window. You can pay via UPI, Card, NetBanking, or Wallets.
+        </div>
+      </div>
+
+      <!-- UPI QR PANEL -->
+      <div class="pay-panel" id="panel-upi_qr">
+        <div style="font-size:13px;font-weight:600;margin-bottom:12px;color:var(--muted);">📱 Scan trainer's QR code with any UPI app</div>
+        <div class="qr-display">
+          <div style="font-size:13px;color:var(--muted);margin-bottom:4px;">Pay directly to trainer</div>
+          <div class="qr-image" id="trainerQRImage">▣</div>
+          <div class="qr-name" id="trainerQRName">Rahul Sharma</div>
+          <div class="qr-upi" id="trainerQRUpi">rahul.fitness@upi</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:6px;">Scan with PhonePe · GPay · Paytm · BHIM</div>
+        </div>
+        <div class="steps-list">
+          <div class="step-item"><div class="step-num">1</div>Open PhonePe / GPay / Paytm on your phone</div>
+          <div class="step-item"><div class="step-num">2</div>Scan the QR code above</div>
+          <div class="step-item"><div class="step-num">3</div>Enter amount ₹<span id="qrAmount">199</span> and pay</div>
+          <div class="step-item"><div class="step-num">4</div>Take a screenshot of payment confirmation</div>
+          <div class="step-item"><div class="step-num">5</div>Upload screenshot below and click Verify</div>
+        </div>
+        <div style="margin-top:16px;">
+          <label class="form-label">Upload Payment Screenshot *</label>
+          <div class="screenshot-upload" id="screenshotDrop" onclick="document.getElementById('screenshotInput').click()">
+            <div style="font-size:28px;margin-bottom:6px;">📸</div>
+            <div style="font-size:13px;font-weight:600;">Click to upload screenshot</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:3px;">JPG / PNG · Max 5MB</div>
+            <input type="file" id="screenshotInput" style="display:none;" accept="image/*" onchange="handleScreenshot(this)"/>
+          </div>
+          <div id="screenshotPreview" style="display:none;margin-top:10px;"></div>
+        </div>
+        <div style="margin-top:14px;" class="form-group">
+          <label class="form-label">UPI Transaction ID (optional)</label>
+          <input type="text" class="form-input" id="upiTxnId" placeholder="e.g. 405123456789"/>
+        </div>
+      </div>
+
+      <!-- UPI ID PANEL -->
+      <div class="pay-panel" id="panel-upi_id">
+        <div style="font-size:13px;font-weight:600;margin-bottom:12px;color:var(--muted);">🏦 Pay directly using trainer's UPI ID</div>
+        <div class="upi-id-box">
+          <div style="font-size:12px;color:var(--muted);margin-bottom:8px;">Trainer's UPI ID</div>
+          <div class="upi-copy-row">
+            <div class="upi-id-text" id="trainerUpiId">rahul.fitness@upi</div>
+            <button class="copy-btn" onclick="copyUpiId()">📋 Copy</button>
+          </div>
+          <div style="font-size:12px;color:var(--muted);margin-top:10px;text-align:center;">Amount: <strong style="color:var(--orange);font-size:16px;">₹<span id="upiAmount">199</span></strong></div>
+          <div class="upi-apps">
+            <a class="upi-app-btn" href="#" onclick="openUpiApp('phonepe')">📱 PhonePe</a>
+            <a class="upi-app-btn" href="#" onclick="openUpiApp('gpay')">💚 GPay</a>
+            <a class="upi-app-btn" href="#" onclick="openUpiApp('paytm')">💙 Paytm</a>
+            <a class="upi-app-btn" href="#" onclick="openUpiApp('bhim')">🇮🇳 BHIM</a>
+          </div>
+        </div>
+        <div style="margin-top:4px;">
+          <label class="form-label">Upload Payment Screenshot *</label>
+          <div class="screenshot-upload" id="screenshotDrop2" onclick="document.getElementById('screenshotInput2').click()">
+            <div style="font-size:28px;margin-bottom:6px;">📸</div>
+            <div style="font-size:13px;font-weight:600;">Click to upload screenshot</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:3px;">JPG / PNG · Max 5MB</div>
+            <input type="file" id="screenshotInput2" style="display:none;" accept="image/*" onchange="handleScreenshot2(this)"/>
+          </div>
+          <div id="screenshotPreview2" style="display:none;margin-top:10px;"></div>
+        </div>
+        <div style="margin-top:12px;" class="form-group">
+          <label class="form-label">UPI Transaction ID (optional — helps faster verification)</label>
+          <input type="text" class="form-input" id="upiTxnId2" placeholder="e.g. 405123456789"/>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT COLUMN - ORDER SUMMARY -->
+  <div>
+    <div class="order-card">
+      <div class="order-title">🧾 Order Summary</div>
+
+      <div class="order-row">
+        <span class="order-label">Plan</span>
+        <span class="order-val" id="summaryPlan">Weight Loss Pro</span>
+      </div>
+      <div class="order-row">
+        <span class="order-label">Trainer</span>
+        <span class="order-val" id="summaryTrainer">Rahul Sharma</span>
+      </div>
+      <div class="order-row">
+        <span class="order-label">Duration</span>
+        <span class="order-val">30 Days</span>
+      </div>
+      <div class="order-row">
+        <span class="order-label">Price</span>
+        <span class="order-val">₹<span id="summaryPrice">199</span>/month</span>
+      </div>
+      <div class="order-row" id="discountRow" style="display:none;">
+        <span class="order-label" style="color:var(--green);">Coupon Discount</span>
+        <span class="order-val" style="color:var(--green);">-₹<span id="discountAmt">0</span></span>
+      </div>
+      <div class="order-row order-total">
+        <span class="order-label">Total</span>
+        <span class="order-val">₹<span id="totalAmount">199</span></span>
+      </div>
+
+      <!-- COUPON -->
+      <div class="coupon-row">
+        <input type="text" class="coupon-input" id="couponInput" placeholder="Enter coupon code"/>
+        <button class="coupon-btn" onclick="applyCoupon()">Apply</button>
+      </div>
+      <div class="coupon-success" id="couponSuccess">✅ Coupon applied! You save ₹<span id="couponSaved">50</span></div>
+
+      <!-- BREAKDOWN -->
+      <div style="background:var(--surface);border-radius:10px;padding:12px;margin:14px 0;font-size:12px;color:var(--muted);">
+        <div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span>Trainer receives (80%)</span><span style="color:var(--text);font-weight:600;">₹<span id="trainerAmount">159</span></span></div>
+        <div style="display:flex;justify-content:space-between;"><span>Platform fee (20%)</span><span>₹<span id="platformAmount">40</span></span></div>
+      </div>
+
+      <!-- PAY BUTTON -->
+      <button class="pay-btn" id="payBtn" onclick="processPayment()">
+        🔒 Pay ₹<span id="payBtnAmount">199</span> Now
+      </button>
+
+      <div class="safe-badges">
+        <div class="safe-badge">🔒 SSL Secure</div>
+        <div class="safe-badge">↩️ Cancel Anytime</div>
+        <div class="safe-badge">✅ Instant Access</div>
+      </div>
+
+      <div style="font-size:11px;color:var(--muted);text-align:center;margin-top:14px;line-height:1.6;">
+        After payment, you get <strong style="color:var(--text)">instant access</strong> to your trainer's plan for 30 days.
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SUCCESS MODAL -->
+<div class="success-modal" id="successModal">
+  <div class="success-box">
+    <div class="success-emoji">🎉</div>
+    <div class="success-title">Payment Successful!</div>
+    <div class="success-sub" id="successMsg">Your plan is now active. You have full access to Rahul Sharma's Weight Loss Pro plan for 30 days!</div>
+    <a href="member-dashboard.html" style="display:block;background:var(--orange);color:#fff;padding:13px;border-radius:10px;font-weight:700;font-size:15px;text-decoration:none;margin-bottom:10px;">Go to My Dashboard →</a>
+    <a href="messages.html" style="display:block;background:none;border:1px solid var(--border);color:var(--text);padding:11px;border-radius:10px;font-weight:600;font-size:13px;text-decoration:none;">💬 Message Your Trainer</a>
+  </div>
+</div>
+
+<!-- RAZORPAY SDK -->
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+
+<!-- ===== SUPABASE AUTH + DB + STORAGE LOGIC ===== -->
+<script>
+const sbClient = window.sb;
+
+let currentUser = null;
+let trainerData = null;
+let finalAmount = 199;
+let discountAmount = 0;
+
+// Get trainer/plan from URL params
+const params = new URLSearchParams(window.location.search);
+const trainerId = params.get('trainer') || 'demo';
+const planPrice = parseInt(params.get('price') || '199');
+const planNameParam = params.get('plan') || 'Weight Loss Pro';
+
+// Load trainer data
+async function loadTrainerData() {
+  if (trainerId === 'demo') {
+    // Demo mode - show sample data
+    document.getElementById('trainerName').textContent = 'Rahul Sharma';
+    document.getElementById('planName').textContent = '⚖️ ' + planNameParam;
+    document.getElementById('trainerQRName').textContent = 'Rahul Sharma';
+    document.getElementById('trainerQRUpi').textContent = 'rahul.fitness@upi';
+    document.getElementById('trainerUpiId').textContent = 'rahul.fitness@upi';
+    document.getElementById('summaryPlan').textContent = planNameParam;
+    document.getElementById('summaryTrainer').textContent = 'Rahul Sharma';
+    finalAmount = planPrice;
+    updateAmountDisplay();
+    return;
+  }
+
+  const { data: t, error } = await sbClient
+    .from('trainers')
+    .select('*')
+    .eq('id', trainerId)
+    .single();
+
+  if (!error && t) {
+    trainerData = t;
+    document.getElementById('trainerName').textContent = t.name;
+    document.getElementById('planName').textContent = '📦 ' + (t.plan_name || planNameParam);
+    document.getElementById('trainerQRName').textContent = t.name;
+    document.getElementById('trainerQRUpi').textContent = t.upi_id || 'UPI not set';
+    document.getElementById('trainerUpiId').textContent = t.upi_id || 'Contact trainer';
+    if (t.qr_image_url) {
+      document.getElementById('trainerQRImage').innerHTML = `<img src="${t.qr_image_url}" style="width:140px;height:140px;object-fit:contain;border-radius:8px;"/>`;
+    }
+    document.getElementById('summaryPlan').textContent = t.plan_name || planNameParam;
+    document.getElementById('summaryTrainer').textContent = t.name;
+    finalAmount = t.plan_price || planPrice;
+    updateAmountDisplay();
+  } else if (error) {
+    console.error('Error loading trainer:', error);
+  }
+}
+
+function updateAmountDisplay() {
+  const discounted = finalAmount - discountAmount;
+  document.getElementById('summaryPrice').textContent = finalAmount;
+  document.getElementById('totalAmount').textContent = discounted;
+  document.getElementById('payBtnAmount').textContent = discounted;
+  document.getElementById('qrAmount').textContent = discounted;
+  document.getElementById('upiAmount').textContent = discounted;
+  document.getElementById('trainerAmount').textContent = Math.round(discounted * 0.8);
+  document.getElementById('platformAmount').textContent = Math.round(discounted * 0.2);
+}
+
+// AUTH CHECK — redirect to login if not signed in
+sbClient.auth.getSession().then(({ data: { session } }) => {
+  if (!session) { window.location.href = 'login.html'; return; }
+  currentUser = session.user;
+  document.getElementById('cardEmail').value = currentUser.email || '';
+  document.getElementById('cardName').value = currentUser.user_metadata?.full_name || '';
+  loadTrainerData();
+});
+
+// RAZORPAY PAYMENT
+window.razorpayPayment = async function() {
+  const name = document.getElementById('cardName').value.trim();
+  const email = document.getElementById('cardEmail').value.trim();
+  const phone = document.getElementById('cardPhone').value.trim();
+  if (!name || !email || !phone) { showAlert('Please fill in all details', 'error'); return; }
+
+  const options = {
+    // ⚠️ REPLACE WITH YOUR RAZORPAY KEY
+    key: "rzp_test_YOUR_KEY_HERE",
+    amount: (finalAmount - discountAmount) * 100, // in paise
+    currency: "INR",
+    name: "FitCoach Hub",
+    description: `${planNameParam} — ${document.getElementById('trainerName').textContent}`,
+    image: "https://via.placeholder.com/150x50/ff6b00/fff?text=FitCoach",
+    prefill: { name, email, contact: phone },
+    theme: { color: "#ff6b00" },
+    modal: { ondismiss: () => { document.getElementById('payBtn').disabled = false; document.getElementById('payBtn').innerHTML = `🔒 Pay ₹${finalAmount - discountAmount} Now`; }},
+    handler: async function(response) {
+      // Payment successful
+      await savePurchase({
+        paymentId: response.razorpay_payment_id,
+        orderId: response.razorpay_order_id || 'rp_' + Date.now(),
+        paymentMethod: 'razorpay',
+        status: 'paid'
+      });
+    }
+  };
+  const rzp = new window.Razorpay(options);
+  rzp.open();
+};
+
+// SAVE PURCHASE TO SUPABASE ("purchases" table)
+window.savePurchase = async function({ paymentId, orderId, paymentMethod, status, screenshotUrl }) {
+  try {
+    const now = new Date();
+    const expiresAt = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString();
+    const paidAmount = finalAmount - discountAmount;
+
+    const { data: purchase, error } = await sbClient
+      .from('purchases')
+      .insert({
+        member_id: currentUser.id,
+        trainer_id: trainerId === 'demo' ? null : trainerId,
+        plan_name: planNameParam, amount: paidAmount,
+        trainer_amount: Math.round(paidAmount * 0.8),
+        platform_amount: Math.round(paidAmount * 0.2),
+        payment_id: paymentId, order_id: orderId,
+        payment_method: paymentMethod, status,
+        screenshot_url: screenshotUrl || null,
+        created_at: now.toISOString(), expires_at: expiresAt,
+        is_active: status === 'paid',
+        needs_verification: paymentMethod !== 'razorpay'
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    // Update member's active plan
+    await sbClient.from('users').update({
+      active_plan: purchase.id, active_plan_expiry: expiresAt
+    }).eq('id', currentUser.id);
+
+    // Update trainer stats (read-then-write; fine for this scale)
+    if (trainerId !== 'demo') {
+      const { data: t } = await sbClient
+        .from('trainers')
+        .select('total_students, total_earnings')
+        .eq('id', trainerId)
+        .single();
+      if (t) {
+        await sbClient.from('trainers').update({
+          total_students: (t.total_students || 0) + 1,
+          total_earnings: (t.total_earnings || 0) + Math.round(paidAmount * 0.8)
+        }).eq('id', trainerId);
+      }
+    }
+
+    document.getElementById('successMsg').textContent =
+      `Your plan is now ${status === 'paid' ? 'active' : 'pending verification'}! ${status === 'paid' ? `You have full access for 30 days.` : 'Our team will verify your payment within 2-4 hours.'}`;
+    document.getElementById('successModal').style.display = 'flex';
+  } catch(e) {
+    showAlert('Payment saved but error updating profile. Contact support.', 'error');
+    console.error(e);
+  }
+};
+
+// UPI SCREENSHOT UPLOAD → Supabase Storage ("payment-screenshots" bucket)
+window.handleScreenshotUpload = async function(file) {
+  if (!file) return null;
+  const path = `${currentUser.id}_${Date.now()}_${file.name}`;
+  const { error } = await sbClient.storage.from('payment-screenshots').upload(path, file);
+  if (error) { console.error('Screenshot upload error:', error); return null; }
+  const { data } = sbClient.storage.from('payment-screenshots').getPublicUrl(path);
+  return data.publicUrl;
+};
+
+window.showAlert = function(msg, type='error') {
+  const box = document.getElementById('alertBox');
+  box.textContent = msg;
+  box.className = `alert ${type} show`;
+  setTimeout(() => box.classList.remove('show'), 5000);
+};
+</script>
+
+<!-- ===== UI ONLY (payment tabs, screenshot preview, coupon) — unchanged ===== -->
+<script>
+let currentPayMethod = 'razorpay';
+let screenshotFileLocal = null;
+
+function selectPayMethod(method, el) {
+  currentPayMethod = method;
+  document.querySelectorAll('.pmt').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  document.querySelectorAll('.pay-panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('panel-' + method).classList.add('active');
+  const btnLabels = {
+    razorpay: '🔒 Pay ₹<span id="payBtnAmount">199</span> Now',
+    upi_qr: '✅ I have paid — Verify Payment',
+    upi_id: '✅ I have paid — Verify Payment'
+  };
+  document.getElementById('payBtn').innerHTML = btnLabels[method];
+}
+
+function handleScreenshot(input) {
+  if (input.files && input.files[0]) {
+    screenshotFileLocal = input.files[0];
+    const url = URL.createObjectURL(input.files[0]);
+    document.getElementById('screenshotPreview').innerHTML =
+      `<img src="${url}" style="width:100%;border-radius:8px;border:2px solid var(--green);"/>`;
+    document.getElementById('screenshotPreview').style.display = 'block';
+    document.getElementById('screenshotDrop').classList.add('has-file');
+    document.getElementById('screenshotDrop').innerHTML =
+      `<div style="font-size:24px;margin-bottom:4px;">✅</div><div style="font-size:13px;font-weight:600;color:var(--green);">Screenshot uploaded!</div><div style="font-size:11px;color:var(--muted);margin-top:2px;">Click to change</div><input type="file" id="screenshotInput" style="display:none;" accept="image/*" onchange="handleScreenshot(this)"/>`;
+  }
+}
+function handleScreenshot2(input) {
+  if (input.files && input.files[0]) {
+    screenshotFileLocal = input.files[0];
+    const url = URL.createObjectURL(input.files[0]);
+    document.getElementById('screenshotPreview2').innerHTML =
+      `<img src="${url}" style="width:100%;border-radius:8px;border:2px solid var(--green);"/>`;
+    document.getElementById('screenshotPreview2').style.display = 'block';
+    document.getElementById('screenshotDrop2').classList.add('has-file');
+  }
+}
+
+function copyUpiId() {
+  const id = document.getElementById('trainerUpiId').textContent;
+  navigator.clipboard.writeText(id).then(() => {
+    const btn = document.querySelector('.copy-btn');
+    btn.textContent = '✅ Copied!';
+    setTimeout(() => btn.textContent = '📋 Copy', 2000);
+  });
+}
+
+function openUpiApp(app) {
+  const upiId = document.getElementById('trainerUpiId').textContent;
+  const amount = document.getElementById('upiAmount').textContent;
+  const urls = {
+    phonepe: `phonepe://pay?pa=${upiId}&pn=FitCoach&am=${amount}&cu=INR`,
+    gpay: `tez://upi/pay?pa=${upiId}&pn=FitCoach&am=${amount}&cu=INR`,
+    paytm: `paytmmp://pay?pa=${upiId}&pn=FitCoach&am=${amount}&cu=INR`,
+    bhim: `upi://pay?pa=${upiId}&pn=FitCoach&am=${amount}&cu=INR`
+  };
+  window.location.href = urls[app];
+}
+
+function applyCoupon() {
+  const code = document.getElementById('couponInput').value.trim().toUpperCase();
+  const coupons = { 'FIT50': 50, 'WELCOME': 30, 'FIRST100': 100 };
+  if (coupons[code]) {
+    discountAmount = Math.min(coupons[code], finalAmount - 1);
+    document.getElementById('discountRow').style.display = 'flex';
+    document.getElementById('discountAmt').textContent = discountAmount;
+    document.getElementById('couponSaved').textContent = discountAmount;
+    document.getElementById('couponSuccess').style.display = 'block';
+    updateAmountDisplay();
+  } else {
+    document.getElementById('couponSuccess').style.display = 'none';
+    document.getElementById('discountRow').style.display = 'none';
+    alert('Invalid coupon code. Try: FIT50, WELCOME, FIRST100');
+  }
+}
+
+async function processPayment() {
+  const btn = document.getElementById('payBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span style="display:inline-block;width:16px;height:16px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-right:6px;"></span> Processing...';
+
+  if (currentPayMethod === 'razorpay') {
+    window.razorpayPayment();
+  } else {
+    // UPI direct payment
+    if (!screenshotFileLocal) {
+      alert('Please upload payment screenshot first!');
+      btn.disabled = false;
+      btn.innerHTML = '✅ I have paid — Verify Payment';
+      return;
+    }
+    try {
+      let screenshotUrl = null;
+      if (window.handleScreenshotUpload) {
+        screenshotUrl = await window.handleScreenshotUpload(screenshotFileLocal);
+      }
+      const txnId = document.getElementById('upiTxnId')?.value || document.getElementById('upiTxnId2')?.value || '';
+      await window.savePurchase({
+        paymentId: txnId || 'upi_' + Date.now(),
+        orderId: 'upi_order_' + Date.now(),
+        paymentMethod: 'upi_direct',
+        status: 'pending_verification',
+        screenshotUrl
+      });
+    } catch(e) {
+      alert('Error: ' + e.message);
+      btn.disabled = false;
+      btn.innerHTML = '✅ I have paid — Verify Payment';
+    }
+  }
+}
+</script>
+</body>
+</html>

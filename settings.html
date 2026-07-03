@@ -1,0 +1,852 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="supabase-config.js"></script>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>FitCoach Hub — Settings</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+*{margin:0;padding:0;box-sizing:border-box;}
+:root{
+  --bg:#0a0a0a;--surface:#111111;--card:#1a1a1a;--border:#2a2a2a;
+  --accent:#ff6b00;--accent-dim:#ff6b0018;
+  --text:#f0f0f0;--muted:#888888;
+  --green:#22c55e;--red:#ef4444;--blue:#3b82f6;
+}
+body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);display:flex;min-height:100vh;font-size:14px;transition:background .3s,color .3s;}
+
+/* LIGHT THEME */
+body.theme-light{--bg:#f0f0f0;--surface:#ffffff;--card:#e8e8e8;--border:#cccccc;--text:#111111;--muted:#555555;}
+/* MIDNIGHT THEME */
+body.theme-midnight{--bg:#000000;--surface:#080808;--card:#101010;--border:#181818;}
+
+/* ---- SIDEBAR ---- */
+.sidebar{width:230px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;position:fixed;top:0;left:0;height:100vh;z-index:100;}
+.s-logo{padding:20px 18px;border-bottom:1px solid var(--border);}
+.s-logo a{font-size:18px;font-weight:800;color:var(--accent);text-decoration:none;}
+.s-logo small{display:block;font-size:11px;color:var(--muted);margin-top:2px;}
+.s-nav{flex:1;padding:12px 0;overflow-y:auto;}
+.s-nav-label{padding:10px 18px 4px;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;}
+.s-nav-item{display:flex;align-items:center;gap:10px;padding:10px 18px;color:var(--muted);font-size:13px;text-decoration:none;transition:all .2s;position:relative;cursor:pointer;}
+.s-nav-item:hover,.s-nav-item.active{color:var(--text);background:var(--accent-dim);}
+.s-nav-item.active::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--accent);}
+.s-nav-badge{margin-left:auto;background:var(--accent);color:#fff;font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px;}
+.s-sidebar-bottom{padding:14px 18px;border-top:1px solid var(--border);}
+.s-user-row{display:flex;align-items:center;gap:10px;}
+.s-user-av{width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,var(--blue),#6366f1);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;}
+.s-user-name{font-size:13px;font-weight:600;}
+.s-user-plan{font-size:11px;color:var(--accent);}
+
+/* ---- MAIN ---- */
+.main{margin-left:230px;flex:1;display:flex;flex-direction:column;}
+.topbar{padding:14px 24px;border-bottom:1px solid var(--border);background:var(--surface);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50;}
+.topbar-title{font-size:18px;font-weight:700;}
+.btn-save{padding:9px 20px;border-radius:9px;background:var(--accent);color:#fff;font-size:13px;font-weight:700;border:none;cursor:pointer;}
+.btn-save:hover{opacity:.9;}
+
+/* ---- SETTINGS LAYOUT ---- */
+.settings-body{display:flex;flex:1;}
+.settings-nav{width:210px;flex-shrink:0;border-right:1px solid var(--border);padding:14px 0;background:var(--surface);}
+.sn-section{padding:10px 18px 4px;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;}
+.sn-btn{display:flex;align-items:center;gap:8px;width:100%;padding:10px 18px;background:none;border:none;color:var(--muted);font-size:13px;font-family:inherit;cursor:pointer;text-align:left;transition:all .2s;position:relative;}
+.sn-btn:hover,.sn-btn.active{color:var(--text);background:var(--accent-dim);}
+.sn-btn.active{color:var(--accent);}
+.sn-btn.active::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--accent);}
+.sn-btn.danger{color:var(--red);}
+
+.settings-panels{flex:1;padding:24px;overflow-y:auto;max-height:calc(100vh - 57px);}
+.panel{display:none;}
+.panel.active{display:block;}
+
+/* ---- CARDS ---- */
+.card{background:var(--card);border:1px solid var(--border);border-radius:14px;margin-bottom:16px;overflow:hidden;}
+.card-head{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;}
+.card-head-icon{font-size:18px;}
+.card-head-title{font-size:15px;font-weight:700;}
+.card-head-sub{font-size:12px;color:var(--muted);margin-top:2px;}
+.card-body{padding:18px 20px;}
+
+/* ---- TOGGLE ROW ---- */
+.tog-row{display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--border);}
+.tog-row:last-child{border:none;}
+.tog-info{flex:1;margin-right:14px;}
+.tog-label{font-size:14px;font-weight:600;}
+.tog-desc{font-size:12px;color:var(--muted);margin-top:3px;}
+
+/* ---- TOGGLE SWITCH ---- */
+.tog{position:relative;width:48px;height:26px;flex-shrink:0;}
+.tog input{opacity:0;width:0;height:0;position:absolute;}
+.tog-track{position:absolute;inset:0;border-radius:26px;background:var(--border);cursor:pointer;transition:background .25s;}
+.tog-track::after{content:'';position:absolute;width:20px;height:20px;top:3px;left:3px;border-radius:50%;background:#fff;transition:transform .25s;box-shadow:0 1px 3px rgba(0,0,0,.3);}
+.tog input:checked ~ .tog-track{background:var(--accent);}
+.tog input:checked ~ .tog-track::after{transform:translateX(22px);}
+
+/* ---- THEME CARDS ---- */
+.theme-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
+.theme-card{border:2px solid var(--border);border-radius:12px;padding:14px;cursor:pointer;transition:all .2s;text-align:center;}
+.theme-card:hover{border-color:var(--accent);}
+.theme-card.selected{border-color:var(--accent);box-shadow:0 0 0 3px rgba(255,107,0,.15);}
+.theme-preview{height:50px;border-radius:8px;margin-bottom:10px;}
+.theme-name{font-size:12px;font-weight:700;}
+.theme-tick{font-size:14px;color:var(--accent);margin-top:5px;display:none;}
+.theme-card.selected .theme-tick{display:block;}
+
+/* ---- COLOR SWATCHES ---- */
+.color-row{display:flex;gap:10px;flex-wrap:wrap;padding:2px 0;}
+.swatch{width:40px;height:40px;border-radius:50%;cursor:pointer;border:3px solid transparent;transition:all .2s;position:relative;}
+.swatch:hover{transform:scale(1.12);}
+.swatch.selected{border:3px solid #fff;outline:3px solid var(--accent);}
+.swatch::after{content:'✓';position:absolute;inset:0;display:none;align-items:center;justify-content:center;color:#fff;font-size:15px;font-weight:900;border-radius:50%;}
+.swatch.selected::after{display:flex;}
+
+/* ---- FONT SIZE ---- */
+.fs-grid{display:flex;gap:10px;}
+.fs-card{flex:1;padding:12px;border:2px solid var(--border);border-radius:10px;text-align:center;cursor:pointer;transition:all .2s;}
+.fs-card:hover{border-color:var(--accent);}
+.fs-card.selected{border-color:var(--accent);background:var(--accent-dim);color:var(--accent);}
+.fs-card .fs-A{font-weight:800;margin-bottom:4px;}
+.fs-card .fs-label{font-size:11px;color:var(--muted);}
+.fs-card.selected .fs-label{color:var(--accent);}
+
+/* ---- LANG GRID ---- */
+.lang-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
+.lang-card{border:2px solid var(--border);border-radius:10px;padding:12px;text-align:center;cursor:pointer;font-size:13px;font-weight:600;color:var(--muted);transition:all .2s;}
+.lang-card:hover,.lang-card.selected{border-color:var(--accent);background:var(--accent-dim);color:var(--accent);}
+
+/* ---- UNIT ROW ---- */
+.unit-row{display:flex;gap:8px;}
+.unit-btn{flex:1;padding:10px;border:2px solid var(--border);border-radius:9px;text-align:center;font-size:14px;font-weight:700;cursor:pointer;transition:all .2s;background:none;color:var(--text);font-family:inherit;}
+.unit-btn:hover,.unit-btn.selected{border-color:var(--accent);background:var(--accent-dim);color:var(--accent);}
+
+/* ---- FORM ---- */
+.f-group{margin-bottom:14px;}
+.f-label{font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.3px;display:block;margin-bottom:6px;}
+.f-input{width:100%;background:var(--surface);border:1px solid var(--border);border-radius:9px;padding:11px 14px;color:var(--text);font-size:13px;font-family:inherit;outline:none;transition:border-color .2s;}
+.f-input:focus{border-color:var(--accent);}
+.f-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+
+/* ---- DAY PILLS ---- */
+.day-pills{display:flex;gap:6px;flex-wrap:wrap;}
+.day-pill{padding:7px 12px;border-radius:8px;border:1px solid var(--border);font-size:12px;font-weight:600;cursor:pointer;color:var(--muted);user-select:none;transition:all .2s;}
+.day-pill.on{background:var(--accent);border-color:var(--accent);color:#fff;}
+
+/* ---- PASSWORD STRENGTH ---- */
+.pw-bar{height:4px;border-radius:2px;margin-top:6px;transition:all .3s;width:0;}
+.pw-text{font-size:11px;margin-top:4px;}
+
+/* ---- SESSION ROW ---- */
+.sess-row{display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--border);}
+.sess-row:last-child{border:none;}
+.curr-tag{background:#22c55e18;color:var(--green);font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;margin-left:6px;}
+.btn-logout-dev{background:none;border:1px solid rgba(239,68,68,.4);color:var(--red);padding:6px 12px;border-radius:7px;font-size:11px;font-weight:600;cursor:pointer;transition:all .2s;}
+.btn-logout-dev:hover{background:var(--red);color:#fff;}
+
+/* ---- PLAN CARD ---- */
+.plan-card{display:flex;align-items:center;gap:14px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:10px;}
+.plan-card.active-plan{border-color:var(--accent);background:var(--accent-dim);}
+.plan-icon{font-size:26px;flex-shrink:0;}
+.plan-name-txt{font-size:14px;font-weight:700;}
+.plan-meta-txt{font-size:12px;color:var(--muted);margin-top:2px;}
+.plan-price-txt{margin-left:auto;font-size:20px;font-weight:800;color:var(--accent);}
+.active-tag{background:var(--green);color:#fff;font-size:9px;font-weight:700;padding:2px 7px;border-radius:20px;margin-left:6px;vertical-align:middle;}
+
+/* ---- BILLING ROW ---- */
+.bill-row{display:flex;align-items:center;justify-content:space-between;padding:11px 0;border-bottom:1px solid var(--border);}
+.bill-row:last-child{border:none;}
+.bill-date{font-size:13px;font-weight:600;}
+.bill-meta{font-size:11px;color:var(--muted);margin-top:2px;}
+.bill-amt{font-weight:700;color:var(--green);}
+
+/* ---- PAYMENT ITEM ---- */
+.pay-item{display:flex;align-items:center;gap:12px;background:var(--surface);border:1px solid var(--border);border-radius:11px;padding:14px;margin-bottom:8px;}
+.pay-icon{font-size:24px;flex-shrink:0;}
+.pay-name{font-size:13px;font-weight:600;}
+.pay-meta{font-size:11px;color:var(--muted);margin-top:2px;}
+.btn-remove{margin-left:auto;background:none;border:1px solid rgba(239,68,68,.4);color:var(--red);padding:6px 12px;border-radius:7px;font-size:11px;font-weight:600;cursor:pointer;transition:all .2s;}
+.btn-remove:hover{background:var(--red);color:#fff;}
+
+/* ---- EXPORT ROW ---- */
+.exp-row{display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--border);}
+.exp-row:last-child{border:none;}
+.exp-label{font-size:14px;font-weight:600;}
+.exp-desc{font-size:12px;color:var(--muted);margin-top:2px;}
+
+/* ---- DANGER ROW ---- */
+.dang-row{display:flex;align-items:center;justify-content:space-between;padding:14px 0;border-bottom:1px solid var(--border);}
+.dang-row:last-child{border:none;}
+.dang-label{font-size:14px;font-weight:600;}
+.dang-desc{font-size:12px;color:var(--muted);margin-top:3px;}
+.btn-dang{background:none;border:1px solid rgba(239,68,68,.4);color:var(--red);padding:7px 14px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;transition:all .2s;}
+.btn-dang:hover{background:var(--red);color:#fff;}
+.btn-dang-solid{background:var(--red);border:none;color:#fff;padding:9px 18px;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;}
+
+/* ---- MISC ---- */
+.btn-primary{background:var(--accent);color:#fff;border:none;padding:9px 18px;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;}
+.btn-secondary{background:none;border:1px solid var(--border);color:var(--text);padding:9px 18px;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;}
+.btn-secondary:hover{border-color:var(--accent);}
+
+/* ---- TOAST ---- */
+.toast{position:fixed;bottom:24px;right:24px;padding:13px 22px;border-radius:11px;font-weight:600;font-size:13px;z-index:9999;opacity:0;transform:translateY(20px);transition:all .3s;pointer-events:none;}
+.toast.show{opacity:1;transform:translateY(0);}
+
+@media(max-width:900px){
+  .sidebar{width:54px;}.sidebar .s-logo a,.s-nav-item span,.s-nav-label,.s-user-name,.s-user-plan,.s-logo small{display:none;}
+  .main{margin-left:54px;}
+  .settings-nav{display:none;}
+  .f-row{grid-template-columns:1fr;}
+  .theme-grid{grid-template-columns:1fr 1fr;}
+  .lang-grid{grid-template-columns:1fr 1fr;}
+}
+</style>
+</head>
+<body id="BD">
+
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <div class="s-logo"><a href="index.html">⚡ FitCoach Hub</a><small>Member Area</small></div>
+  <nav class="s-nav">
+    <div class="s-nav-label">Main</div>
+    <a href="member-dashboard.html" class="s-nav-item"><span>🏠</span><span>Dashboard</span></a>
+    <a href="marketplace.html" class="s-nav-item"><span>🔍</span><span>Find Trainers</span></a>
+    <a href="plan-details.html" class="s-nav-item"><span>📦</span><span>My Plan</span></a>
+    <div class="s-nav-label">Track</div>
+    <a href="progress-tracker.html" class="s-nav-item"><span>📊</span><span>Progress</span></a>
+    <a href="messages.html" class="s-nav-item"><span>💬</span><span>Messages</span><span class="s-nav-badge">3</span></a>
+    <div class="s-nav-label">Account</div>
+    <a href="profile.html" class="s-nav-item"><span>👤</span><span>Profile</span></a>
+    <a href="settings.html" class="s-nav-item active"><span>⚙️</span><span>Settings</span></a>
+    <a href="login.html" class="s-nav-item"><span>🚪</span><span>Logout</span></a>
+  </nav>
+  <div class="s-sidebar-bottom">
+    <div class="s-user-row">
+      <div class="s-user-av">A</div>
+      <div><div class="s-user-name">Amit Kumar</div><div class="s-user-plan">Pro Plan · Active</div></div>
+    </div>
+  </div>
+</aside>
+
+<!-- MAIN -->
+<div class="main">
+  <div class="topbar">
+    <div class="topbar-title">⚙️ Settings</div>
+    <button class="btn-save" onclick="saveAll()">💾 Save All</button>
+  </div>
+
+  <div class="settings-body">
+
+    <!-- SETTINGS NAV -->
+    <div class="settings-nav">
+      <div class="sn-section">General</div>
+      <button class="sn-btn active" onclick="openPanel('notifications',this)">🔔 Notifications</button>
+      <button class="sn-btn" onclick="openPanel('appearance',this)">🎨 Appearance</button>
+      <button class="sn-btn" onclick="openPanel('language',this)">🌐 Language & Units</button>
+      <div class="sn-section">Account</div>
+      <button class="sn-btn" onclick="openPanel('security',this)">🔒 Security</button>
+      <button class="sn-btn" onclick="openPanel('subscription',this)">💳 Subscription</button>
+      <button class="sn-btn" onclick="openPanel('payments',this)">🏦 Payments</button>
+      <div class="sn-section">Privacy</div>
+      <button class="sn-btn" onclick="openPanel('privacy',this)">🛡️ Privacy</button>
+      <button class="sn-btn" onclick="openPanel('data',this)">📊 My Data</button>
+      <div class="sn-section">Danger</div>
+      <button class="sn-btn danger" onclick="openPanel('danger',this)">⚠️ Account</button>
+    </div>
+
+    <!-- PANELS -->
+    <div class="settings-panels">
+
+      <!-- ===== NOTIFICATIONS ===== -->
+      <div class="panel active" id="panel-notifications">
+        <div class="card">
+          <div class="card-head"><span class="card-head-icon">📱</span><div><div class="card-head-title">Push Notifications</div><div class="card-head-sub">Alerts on your device</div></div></div>
+          <div class="card-body">
+            <div class="tog-row"><div class="tog-info"><div class="tog-label">Workout Reminders</div><div class="tog-desc">Daily reminder to complete your workout</div></div><label class="tog"><input type="checkbox" id="n1" checked onchange="saveTog('n1',this.checked,'Workout reminders')"><span class="tog-track"></span></label></div>
+            <div class="tog-row"><div class="tog-info"><div class="tog-label">Trainer Messages</div><div class="tog-desc">When your trainer sends you a message</div></div><label class="tog"><input type="checkbox" id="n2" checked onchange="saveTog('n2',this.checked,'Trainer message alerts')"><span class="tog-track"></span></label></div>
+            <div class="tog-row"><div class="tog-info"><div class="tog-label">Diet Plan Updates</div><div class="tog-desc">When trainer updates your meal plan</div></div><label class="tog"><input type="checkbox" id="n3" checked onchange="saveTog('n3',this.checked,'Diet plan alerts')"><span class="tog-track"></span></label></div>
+            <div class="tog-row"><div class="tog-info"><div class="tog-label">Streak Alerts</div><div class="tog-desc">Motivation to keep your daily streak</div></div><label class="tog"><input type="checkbox" id="n4" checked onchange="saveTog('n4',this.checked,'Streak alerts')"><span class="tog-track"></span></label></div>
+            <div class="tog-row"><div class="tog-info"><div class="tog-label">Achievement Badges</div><div class="tog-desc">When you earn a new badge</div></div><label class="tog"><input type="checkbox" id="n5" checked onchange="saveTog('n5',this.checked,'Achievement alerts')"><span class="tog-track"></span></label></div>
+            <div class="tog-row"><div class="tog-info"><div class="tog-label">Plan Expiry Warning</div><div class="tog-desc">3 days before your plan expires</div></div><label class="tog"><input type="checkbox" id="n6" checked onchange="saveTog('n6',this.checked,'Expiry warning')"><span class="tog-track"></span></label></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-head"><span class="card-head-icon">📧</span><div><div class="card-head-title">Email Notifications</div><div class="card-head-sub">Sent to amit.kumar@gmail.com</div></div></div>
+          <div class="card-body">
+            <div class="tog-row"><div class="tog-info"><div class="tog-label">Weekly Progress Report</div><div class="tog-desc">Every Sunday — your full week summary</div></div><label class="tog"><input type="checkbox" id="e1" checked onchange="saveTog('e1',this.checked,'Weekly report email')"><span class="tog-track"></span></label></div>
+            <div class="tog-row"><div class="tog-info"><div class="tog-label">Payment Receipts</div><div class="tog-desc">After every subscription payment</div></div><label class="tog"><input type="checkbox" id="e2" checked onchange="saveTog('e2',this.checked,'Payment receipt email')"><span class="tog-track"></span></label></div>
+            <div class="tog-row"><div class="tog-info"><div class="tog-label">New Content from Trainer</div><div class="tog-desc">When trainer uploads new videos or plans</div></div><label class="tog"><input type="checkbox" id="e3" onchange="saveTog('e3',this.checked,'New content email')"><span class="tog-track"></span></label></div>
+            <div class="tog-row"><div class="tog-info"><div class="tog-label">Promotional Offers</div><div class="tog-desc">Coupons, discounts and new offers</div></div><label class="tog"><input type="checkbox" id="e4" onchange="saveTog('e4',this.checked,'Promo emails')"><span class="tog-track"></span></label></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-head"><span class="card-head-icon">⏰</span><div><div class="card-head-title">Reminder Timing</div></div></div>
+          <div class="card-body">
+            <div class="f-row" style="margin-bottom:18px;">
+              <div class="f-group"><label class="f-label">Morning Reminder</label><input type="time" class="f-input" id="t_morning" value="07:00" onchange="saveVal('t_morning',this.value);showToast('⏰ Morning reminder set to '+this.value)"/></div>
+              <div class="f-group"><label class="f-label">Evening Reminder</label><input type="time" class="f-input" id="t_evening" value="18:00" onchange="saveVal('t_evening',this.value);showToast('⏰ Evening reminder set to '+this.value)"/></div>
+            </div>
+            <div class="f-group">
+              <label class="f-label" style="margin-bottom:10px;">Reminder Days — tap to toggle</label>
+              <div class="day-pills">
+                <div class="day-pill on" onclick="togDay(this)">Mon</div>
+                <div class="day-pill on" onclick="togDay(this)">Tue</div>
+                <div class="day-pill on" onclick="togDay(this)">Wed</div>
+                <div class="day-pill on" onclick="togDay(this)">Thu</div>
+                <div class="day-pill on" onclick="togDay(this)">Fri</div>
+                <div class="day-pill" onclick="togDay(this)">Sat</div>
+                <div class="day-pill" onclick="togDay(this)">Sun</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== APPEARANCE ===== -->
+      <div class="panel" id="panel-appearance">
+        <div class="card">
+          <div class="card-head"><span class="card-head-icon">🌓</span><div><div class="card-head-title">Theme</div><div class="card-head-sub">Changes instantly</div></div></div>
+          <div class="card-body">
+            <div class="theme-grid">
+              <div class="theme-card selected" id="tc-dark" onclick="applyTheme('dark',this)">
+                <div class="theme-preview" style="background:linear-gradient(135deg,#0a0a0a,#1a1a1a);"></div>
+                <div class="theme-name">🌑 Dark</div>
+                <div class="theme-tick">✓ Active</div>
+              </div>
+              <div class="theme-card" id="tc-midnight" onclick="applyTheme('midnight',this)">
+                <div class="theme-preview" style="background:linear-gradient(135deg,#000,#080808);"></div>
+                <div class="theme-name">🖤 Midnight</div>
+                <div class="theme-tick">✓ Active</div>
+              </div>
+              <div class="theme-card" id="tc-light" onclick="applyTheme('light',this)">
+                <div class="theme-preview" style="background:linear-gradient(135deg,#f0f0f0,#e0e0e0);border:1px solid #ccc;"></div>
+                <div class="theme-name">☀️ Light</div>
+                <div class="theme-tick">✓ Active</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head"><span class="card-head-icon">🎨</span><div><div class="card-head-title">Accent Color</div><div class="card-head-sub">Changes buttons, links and highlights instantly</div></div></div>
+          <div class="card-body">
+            <div class="color-row" id="colorRow">
+              <div class="swatch selected" style="background:#ff6b00;" data-c="#ff6b00" onclick="applyColor(this,'#ff6b00')" title="Orange (Default)"></div>
+              <div class="swatch" style="background:#3b82f6;" data-c="#3b82f6" onclick="applyColor(this,'#3b82f6')" title="Blue"></div>
+              <div class="swatch" style="background:#22c55e;" data-c="#22c55e" onclick="applyColor(this,'#22c55e')" title="Green"></div>
+              <div class="swatch" style="background:#6366f1;" data-c="#6366f1" onclick="applyColor(this,'#6366f1')" title="Purple"></div>
+              <div class="swatch" style="background:#ec4899;" data-c="#ec4899" onclick="applyColor(this,'#ec4899')" title="Pink"></div>
+              <div class="swatch" style="background:#eab308;" data-c="#eab308" onclick="applyColor(this,'#eab308')" title="Yellow"></div>
+              <div class="swatch" style="background:#06b6d4;" data-c="#06b6d4" onclick="applyColor(this,'#06b6d4')" title="Cyan"></div>
+              <div class="swatch" style="background:#f43f5e;" data-c="#f43f5e" onclick="applyColor(this,'#f43f5e')" title="Rose"></div>
+            </div>
+            <div style="display:flex;align-items:center;gap:12px;margin-top:14px;">
+              <span style="font-size:13px;color:var(--muted);">Custom:</span>
+              <input type="color" id="customColorPicker" value="#ff6b00" style="width:44px;height:36px;border:none;border-radius:8px;cursor:pointer;padding:2px;" onchange="applyColor(null,this.value)"/>
+              <span id="colorHex" style="font-size:12px;color:var(--muted);">#ff6b00</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head"><span class="card-head-icon">🔤</span><div><div class="card-head-title">Font Size</div><div class="card-head-sub">Changes text size instantly</div></div></div>
+          <div class="card-body">
+            <div class="fs-grid">
+              <div class="fs-card" data-sz="small" onclick="applyFontSize('small',this)"><div class="fs-A" style="font-size:14px;">A</div><div class="fs-label">Small</div></div>
+              <div class="fs-card selected" data-sz="medium" onclick="applyFontSize('medium',this)"><div class="fs-A" style="font-size:18px;">A</div><div class="fs-label">Medium</div></div>
+              <div class="fs-card" data-sz="large" onclick="applyFontSize('large',this)"><div class="fs-A" style="font-size:22px;">A</div><div class="fs-label">Large</div></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head"><span class="card-head-icon">✨</span><div><div class="card-head-title">Animations</div></div></div>
+          <div class="card-body">
+            <div class="tog-row"><div class="tog-info"><div class="tog-label">UI Animations</div><div class="tog-desc">Smooth transitions and hover effects</div></div><label class="tog"><input type="checkbox" id="anim_on" checked onchange="applyAnimations(this.checked)"><span class="tog-track"></span></label></div>
+            <div class="tog-row"><div class="tog-info"><div class="tog-label">Reduce Motion</div><div class="tog-desc">For users sensitive to motion effects</div></div><label class="tog"><input type="checkbox" id="anim_reduce" onchange="saveTog('anim_reduce',this.checked,this.checked?'Reduce motion ON':'Reduce motion OFF')"><span class="tog-track"></span></label></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== LANGUAGE & UNITS ===== -->
+      <div class="panel" id="panel-language">
+        <div class="card">
+          <div class="card-head"><span class="card-head-icon">🌐</span><div><div class="card-head-title">Language</div></div></div>
+          <div class="card-body">
+            <div class="lang-grid">
+              <div class="lang-card" data-lang="hi" onclick="applyLang(this)">🇮🇳 Hindi</div>
+              <div class="lang-card selected" data-lang="en" onclick="applyLang(this)">🇬🇧 English</div>
+              <div class="lang-card" data-lang="bn" onclick="applyLang(this)">🇧🇩 Bengali</div>
+              <div class="lang-card" data-lang="ta" onclick="applyLang(this)">🇮🇳 Tamil</div>
+              <div class="lang-card" data-lang="te" onclick="applyLang(this)">🇮🇳 Telugu</div>
+              <div class="lang-card" data-lang="mr" onclick="applyLang(this)">🇮🇳 Marathi</div>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-head"><span class="card-head-icon">📏</span><div><div class="card-head-title">Units & Region</div></div></div>
+          <div class="card-body">
+            <div class="f-group"><label class="f-label">Timezone</label><select class="f-input" id="sel_tz" onchange="saveVal('tz',this.value);showToast('🕐 Timezone saved')"><option value="IST" selected>Asia/Kolkata (IST +5:30)</option><option value="UTC">UTC +0:00</option><option value="EST">America/New_York (EST)</option></select></div>
+            <div class="f-group"><label class="f-label">Date Format</label><select class="f-input" id="sel_df" onchange="saveVal('df',this.value);showToast('📅 Date format: '+this.value)"><option value="DD/MM/YYYY" selected>DD/MM/YYYY</option><option value="MM/DD/YYYY">MM/DD/YYYY</option><option value="YYYY-MM-DD">YYYY-MM-DD</option></select></div>
+            <div class="f-group">
+              <label class="f-label" style="margin-bottom:10px;">Weight Unit</label>
+              <div class="unit-row">
+                <button class="unit-btn selected" id="u_kg" onclick="applyUnit('weight','kg',this)">kg</button>
+                <button class="unit-btn" id="u_lbs" onclick="applyUnit('weight','lbs',this)">lbs</button>
+              </div>
+            </div>
+            <div class="f-group" style="margin-bottom:0;">
+              <label class="f-label" style="margin-bottom:10px;">Height Unit</label>
+              <div class="unit-row">
+                <button class="unit-btn selected" id="u_cm" onclick="applyUnit('height','cm',this)">cm</button>
+                <button class="unit-btn" id="u_ft" onclick="applyUnit('height','ft',this)">ft / in</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== SECURITY ===== -->
+      <div class="panel" id="panel-security">
+        <div class="card">
+          <div class="card-head"><span class="card-head-icon">🔑</span><div><div class="card-head-title">Change Password</div></div></div>
+          <div class="card-body">
+            <div class="f-group"><label class="f-label">Current Password</label><input type="password" class="f-input" id="pw_cur" placeholder="Enter current password"/></div>
+            <div class="f-group">
+              <label class="f-label">New Password</label>
+              <input type="password" class="f-input" id="pw_new" placeholder="Min 8 characters" oninput="checkPw(this.value)"/>
+              <div class="pw-bar" id="pw_bar"></div>
+              <div class="pw-text" id="pw_txt"></div>
+            </div>
+            <div class="f-group"><label class="f-label">Confirm New Password</label><input type="password" class="f-input" id="pw_conf" placeholder="Repeat new password"/></div>
+            <button class="btn-primary" onclick="changePw()">🔒 Update Password</button>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-head"><span class="card-head-icon">📱</span><div><div class="card-head-title">Two-Factor Authentication</div></div></div>
+          <div class="card-body">
+            <div class="tog-row"><div class="tog-info"><div class="tog-label">SMS OTP on Login</div><div class="tog-desc">OTP sent to +91 98765 43210</div></div><label class="tog"><input type="checkbox" id="tfa1" checked onchange="saveTog('tfa1',this.checked,this.checked?'SMS OTP enabled':'SMS OTP disabled')"><span class="tog-track"></span></label></div>
+            <div class="tog-row"><div class="tog-info"><div class="tog-label">Email OTP on Login</div><div class="tog-desc">OTP sent to your email</div></div><label class="tog"><input type="checkbox" id="tfa2" onchange="saveTog('tfa2',this.checked,this.checked?'Email OTP enabled':'Email OTP disabled')"><span class="tog-track"></span></label></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-head"><span class="card-head-icon">🖥️</span><div><div class="card-head-title">Active Sessions</div></div></div>
+          <div class="card-body">
+            <div class="sess-row"><div style="display:flex;align-items:center;gap:10px;"><span style="font-size:22px;">💻</span><div><div style="font-size:13px;font-weight:600;">Chrome · Windows <span class="curr-tag">Current</span></div><div style="font-size:11px;color:var(--muted);">Moradabad, UP · Active now</div></div></div></div>
+            <div class="sess-row"><div style="display:flex;align-items:center;gap:10px;"><span style="font-size:22px;">📱</span><div><div style="font-size:13px;font-weight:600;">FitCoach App · Android</div><div style="font-size:11px;color:var(--muted);">Moradabad · 2 hours ago</div></div></div><button class="btn-logout-dev" onclick="logoutDev(this)">Logout</button></div>
+            <div class="sess-row"><div style="display:flex;align-items:center;gap:10px;"><span style="font-size:22px;">💻</span><div><div style="font-size:13px;font-weight:600;">Safari · iPhone</div><div style="font-size:11px;color:var(--muted);">Delhi · 3 days ago</div></div></div><button class="btn-logout-dev" onclick="logoutDev(this)">Logout</button></div>
+            <div style="margin-top:12px;"><button class="btn-secondary" onclick="logoutAll()">Logout All Other Devices</button></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== SUBSCRIPTION ===== -->
+      <div class="panel" id="panel-subscription">
+        <div class="card">
+          <div class="card-head"><span class="card-head-icon">💳</span><div><div class="card-head-title">Current Subscription</div></div></div>
+          <div class="card-body">
+            <div class="plan-card active-plan">
+              <span class="plan-icon">⚖️</span>
+              <div style="flex:1;"><div class="plan-name-txt">Weight Loss Pro <span class="active-tag">ACTIVE</span></div><div class="plan-meta-txt">Trainer: Rahul Sharma · Renews July 1, 2026 · Auto-pay ON</div></div>
+              <div class="plan-price-txt">₹199<span style="font-size:12px;color:var(--muted)">/mo</span></div>
+            </div>
+            <div style="display:flex;gap:8px;margin-top:8px;">
+              <a href="marketplace.html" class="btn-secondary" style="flex:1;text-align:center;text-decoration:none;padding:9px;">Change Plan</a>
+              <button class="btn-dang" onclick="cancelPlan()" style="flex:1;">Cancel Plan</button>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-head"><span class="card-head-icon">📋</span><div><div class="card-head-title">Billing History</div></div></div>
+          <div class="card-body">
+            <div class="bill-row"><div><div class="bill-date">June 1, 2026</div><div class="bill-meta">Weight Loss Pro · Razorpay · pay_abc123</div></div><span class="bill-amt">+₹199</span></div>
+            <div class="bill-row"><div><div class="bill-date">May 1, 2026</div><div class="bill-meta">Beginner Strength · Razorpay · pay_xyz789</div></div><span class="bill-amt">+₹199</span></div>
+            <div class="bill-row"><div><div class="bill-date">April 1, 2026</div><div class="bill-meta">Beginner Strength · Razorpay · pay_def456</div></div><span class="bill-amt">+₹199</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== PAYMENTS ===== -->
+      <div class="panel" id="panel-payments">
+        <div class="card">
+          <div class="card-head"><span class="card-head-icon">🏦</span><div><div class="card-head-title">Saved Payment Methods</div></div></div>
+          <div class="card-body">
+            <div class="pay-item"><span class="pay-icon">📱</span><div><div class="pay-name">UPI · amit@okaxis</div><div class="pay-meta">Default · Last used June 1</div></div><button class="btn-remove" onclick="removePay(this)">Remove</button></div>
+            <div class="pay-item"><span class="pay-icon">💳</span><div><div class="pay-name">HDFC Bank · **** 4521</div><div class="pay-meta">Debit Card · Expires 08/27</div></div><button class="btn-remove" onclick="removePay(this)">Remove</button></div>
+            <button class="btn-primary" style="margin-top:8px;" onclick="showToast('💳 Opening Razorpay to add payment...')">+ Add Payment Method</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== PRIVACY ===== -->
+      <div class="panel" id="panel-privacy">
+        <div class="card">
+          <div class="card-head"><span class="card-head-icon">🛡️</span><div><div class="card-head-title">Privacy Controls</div></div></div>
+          <div class="card-body">
+            <div class="tog-row"><div class="tog-info"><div class="tog-label">Show Progress on Marketplace</div><div class="tog-desc">Let others see your transformation story</div></div><label class="tog"><input type="checkbox" id="p1" onchange="saveTog('p1',this.checked,this.checked?'Progress visible to all':'Progress hidden')"><span class="tog-track"></span></label></div>
+            <div class="tog-row"><div class="tog-info"><div class="tog-label">Progress Photos — Trainer Only</div><div class="tog-desc">Photos visible only to your trainer</div></div><label class="tog"><input type="checkbox" id="p2" checked onchange="saveTog('p2',this.checked,this.checked?'Photos: Trainer only':'Photos: Private')"><span class="tog-track"></span></label></div>
+            <div class="tog-row"><div class="tog-info"><div class="tog-label">Anonymous Analytics</div><div class="tog-desc">Help improve the app — no personal data shared</div></div><label class="tog"><input type="checkbox" id="p3" checked onchange="saveTog('p3',this.checked,this.checked?'Analytics ON':'Analytics OFF')"><span class="tog-track"></span></label></div>
+            <div class="tog-row"><div class="tog-info"><div class="tog-label">WhatsApp Trainer Connection</div><div class="tog-desc">Allow trainer to contact you on WhatsApp</div></div><label class="tog"><input type="checkbox" id="p4" checked onchange="saveTog('p4',this.checked,this.checked?'WhatsApp: Allowed':'WhatsApp: Blocked')"><span class="tog-track"></span></label></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== MY DATA ===== -->
+      <div class="panel" id="panel-data">
+        <div class="card">
+          <div class="card-head"><span class="card-head-icon">📊</span><div><div class="card-head-title">Export & Manage Data</div></div></div>
+          <div class="card-body">
+            <div class="exp-row"><div><div class="exp-label">Progress Data (CSV)</div><div class="exp-desc">Weight, measurements, workout logs</div></div><button class="btn-secondary" onclick="exportCSV()">⬇️ Export</button></div>
+            <div class="exp-row"><div><div class="exp-label">Full Report (PDF)</div><div class="exp-desc">Complete progress report with charts</div></div><button class="btn-secondary" onclick="showToast('📄 PDF export coming soon!')">⬇️ Export</button></div>
+            <div class="exp-row"><div><div class="exp-label">Clear Progress History</div><div class="exp-desc">Delete all logged weight & measurements</div></div><button class="btn-dang" onclick="clearHistory()">Clear</button></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== DANGER ZONE ===== -->
+      <div class="panel" id="panel-danger">
+        <div class="card" style="border-color:rgba(239,68,68,.3);">
+          <div class="card-head" style="border-color:rgba(239,68,68,.2);"><span class="card-head-icon">⚠️</span><div><div class="card-head-title" style="color:var(--red);">Danger Zone</div><div class="card-head-sub">These actions cannot be undone</div></div></div>
+          <div class="card-body">
+            <div class="dang-row"><div><div class="dang-label">Pause Subscription</div><div class="dang-desc">Temporarily pause billing for up to 30 days</div></div><button class="btn-dang" onclick="pauseSub()">Pause</button></div>
+            <div class="dang-row"><div><div class="dang-label">Cancel All Plans</div><div class="dang-desc">Cancel all active subscriptions immediately</div></div><button class="btn-dang" onclick="cancelAllPlans()">Cancel Plans</button></div>
+            <div class="dang-row"><div><div class="dang-label">Deactivate Account</div><div class="dang-desc">Temporarily disable your account</div></div><button class="btn-dang" onclick="deactivate()">Deactivate</button></div>
+            <div class="dang-row"><div><div class="dang-label">Delete Account Forever</div><div class="dang-desc">Permanently delete account and ALL data. Cannot be undone.</div></div><button class="btn-dang-solid" onclick="deleteAcct()">Delete Forever</button></div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- end panels -->
+  </div><!-- end settings-body -->
+</div><!-- end main -->
+
+<!-- TOAST -->
+<div class="toast" id="TOAST"></div>
+
+<script>
+// ================================================================
+// WORKING SETTINGS PAGE — All features use localStorage
+// ================================================================
+
+// --- TOAST ---
+let _toastTimer;
+function showToast(msg, color='#22c55e'){
+  const t = document.getElementById('TOAST');
+  t.textContent = msg;
+  t.style.background = color;
+  t.classList.add('show');
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(()=> t.classList.remove('show'), 3000);
+}
+
+// --- STORAGE ---
+function getS(){ try{ return JSON.parse(localStorage.getItem('fc_settings')||'{}'); }catch(e){ return {}; } }
+function setS(key, val){ const s=getS(); s[key]=val; localStorage.setItem('fc_settings', JSON.stringify(s)); }
+
+// --- PANEL SWITCH ---
+function openPanel(id, btn){
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.sn-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('panel-'+id).classList.add('active');
+  btn.classList.add('active');
+}
+
+// --- TOGGLE SAVE ---
+function saveTog(key, val, label){
+  setS(key, val);
+  showToast((val ? '✅ ' : '❌ ') + label + (val ? ' ON' : ' OFF'));
+}
+
+// --- PLAIN VALUE SAVE ---
+function saveVal(key, val){ setS(key, val); }
+
+// --- DAY PILL TOGGLE ---
+function togDay(el){
+  el.classList.toggle('on');
+  const active = [...document.querySelectorAll('.day-pill.on')].map(p=>p.textContent);
+  setS('reminder_days', active);
+  showToast('📅 ' + el.textContent + (el.classList.contains('on') ? ' added' : ' removed'));
+}
+
+// --- THEME (actually changes body class + CSS vars) ---
+function applyTheme(name, card){
+  const body = document.getElementById('BD');
+  body.className = (name === 'dark') ? '' : 'theme-'+name;
+  document.querySelectorAll('.theme-card').forEach(c => c.classList.remove('selected'));
+  card.classList.add('selected');
+  setS('theme', name);
+  showToast('🎨 Theme: ' + name);
+}
+
+// --- ACCENT COLOR (actually changes CSS variable live) ---
+function applyColor(el, hex){
+  // Apply to root CSS variable
+  document.documentElement.style.setProperty('--accent', hex);
+  document.documentElement.style.setProperty('--accent-dim', hex + '22');
+  // Update swatch selection
+  document.querySelectorAll('.swatch').forEach(s => s.classList.remove('selected'));
+  if(el){ el.classList.add('selected'); }
+  else{
+    const match = document.querySelector('.swatch[data-c="'+hex+'"]');
+    if(match) match.classList.add('selected');
+  }
+  document.getElementById('customColorPicker').value = hex;
+  document.getElementById('colorHex').textContent = hex;
+  setS('accent', hex);
+  showToast('🎨 Color applied: ' + hex);
+}
+
+// --- FONT SIZE (actually changes body font-size) ---
+function applyFontSize(sz, card){
+  const map = { small:'12px', medium:'14px', large:'17px' };
+  document.body.style.fontSize = map[sz];
+  document.querySelectorAll('.fs-card').forEach(c => c.classList.remove('selected'));
+  card.classList.add('selected');
+  setS('fontsize', sz);
+  showToast('🔤 Font size: ' + sz);
+}
+
+// --- ANIMATIONS (actually removes all transitions when off) ---
+let animStyleTag = null;
+function applyAnimations(on){
+  if(!on){
+    if(!animStyleTag){
+      animStyleTag = document.createElement('style');
+      animStyleTag.id = 'no-anim';
+      animStyleTag.textContent = '*{transition:none!important;animation:none!important;}';
+      document.head.appendChild(animStyleTag);
+    }
+  } else {
+    const existing = document.getElementById('no-anim');
+    if(existing) existing.remove();
+    animStyleTag = null;
+  }
+  setS('animations', on);
+  showToast(on ? '✨ Animations ON' : '⏸️ Animations OFF');
+}
+
+// --- LANGUAGE ---
+function applyLang(el){
+  document.querySelectorAll('.lang-card').forEach(c => c.classList.remove('selected'));
+  el.classList.add('selected');
+  setS('lang', el.dataset.lang);
+  showToast('🌐 Language: ' + el.textContent.trim());
+}
+
+// --- UNITS ---
+function applyUnit(type, unit, btn){
+  if(type === 'weight'){
+    document.getElementById('u_kg').classList.remove('selected');
+    document.getElementById('u_lbs').classList.remove('selected');
+  } else {
+    document.getElementById('u_cm').classList.remove('selected');
+    document.getElementById('u_ft').classList.remove('selected');
+  }
+  btn.classList.add('selected');
+  setS(type+'_unit', unit);
+  showToast('📏 ' + type + ' unit: ' + unit);
+}
+
+// --- PASSWORD STRENGTH ---
+function checkPw(pw){
+  const bar = document.getElementById('pw_bar');
+  const txt = document.getElementById('pw_txt');
+  if(!pw){ bar.style.width='0'; txt.textContent=''; return; }
+  let score = 0;
+  if(pw.length >= 8) score++;
+  if(pw.length >= 12) score++;
+  if(/[A-Z]/.test(pw)) score++;
+  if(/[0-9]/.test(pw)) score++;
+  if(/[^A-Za-z0-9]/.test(pw)) score++;
+  const levels = [
+    {w:'18%', c:'#ef4444', t:'Very Weak'},
+    {w:'36%', c:'#f97316', t:'Weak'},
+    {w:'56%', c:'#eab308', t:'Fair'},
+    {w:'78%', c:'#22c55e', t:'Strong'},
+    {w:'100%',c:'#16a34a', t:'Very Strong'}
+  ];
+  const L = levels[Math.min(score, 4)];
+  bar.style.width = L.w;
+  bar.style.background = L.c;
+  txt.textContent = L.t;
+  txt.style.color = L.c;
+}
+
+// --- CHANGE PASSWORD ---
+function changePw(){
+  const cur = document.getElementById('pw_cur').value;
+  const nw  = document.getElementById('pw_new').value;
+  const cf  = document.getElementById('pw_conf').value;
+  if(!cur || !nw || !cf){ showToast('⚠️ Fill all password fields', '#ef4444'); return; }
+  if(nw !== cf){ showToast('⚠️ Passwords do not match', '#ef4444'); return; }
+  if(nw.length < 8){ showToast('⚠️ Min 8 characters required', '#ef4444'); return; }
+  // Supabase: await supabase.auth.updateUser({ password: nw })
+  showToast('🔒 Password updated successfully!');
+  document.getElementById('pw_cur').value = '';
+  document.getElementById('pw_new').value = '';
+  document.getElementById('pw_conf').value = '';
+  document.getElementById('pw_bar').style.width = '0';
+  document.getElementById('pw_txt').textContent = '';
+}
+
+// --- SESSIONS ---
+function logoutDev(btn){
+  const row = btn.closest('.sess-row');
+  row.style.opacity = '0.4';
+  row.style.pointerEvents = 'none';
+  btn.textContent = '✓ Done';
+  showToast('✅ Device logged out');
+}
+function logoutAll(){
+  document.querySelectorAll('.sess-row').forEach((r,i) => {
+    if(i > 0){ r.style.opacity='0.4'; r.style.pointerEvents='none'; }
+  });
+  showToast('✅ All other devices logged out');
+}
+
+// --- SUBSCRIPTION ---
+function cancelPlan(){
+  if(confirm('Cancel plan? It stays active until July 1, 2026.')){
+    showToast('Plan cancellation scheduled', '#eab308');
+  }
+}
+
+// --- PAYMENT ---
+function removePay(btn){
+  if(!confirm('Remove this payment method?')) return;
+  const item = btn.closest('.pay-item');
+  item.style.transition = 'opacity .3s';
+  item.style.opacity = '0';
+  setTimeout(()=> item.remove(), 300);
+  showToast('✅ Payment method removed');
+}
+
+// --- DATA ---
+function exportCSV(){
+  const rows = [
+    ['Date','Weight(kg)','Waist(cm)','Steps','Water(glasses)'],
+    ['2026-06-14','72.5','88','7240','5'],
+    ['2026-06-13','73.0','89','8100','7'],
+    ['2026-06-12','73.2','90','6500','6'],
+    ['2026-06-11','73.5','91','5800','4'],
+  ];
+  const csv = rows.map(r => r.join(',')).join('\n');
+  const a = document.createElement('a');
+  a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+  a.download = 'fitcoach_progress_' + new Date().toISOString().slice(0,10) + '.csv';
+  a.click();
+  showToast('⬇️ CSV file downloaded!');
+}
+function clearHistory(){
+  if(confirm('Delete ALL progress history? Cannot be undone.')){
+    showToast('🗑️ Progress history cleared', '#ef4444');
+  }
+}
+
+// --- DANGER ---
+function pauseSub(){  if(confirm('Pause subscription for 30 days?')) showToast('⏸️ Subscription paused for 30 days', '#eab308'); }
+function cancelAllPlans(){ if(confirm('Cancel ALL active plans?')) showToast('❌ All plans cancelled', '#ef4444'); }
+function deactivate(){ if(confirm('Deactivate your account temporarily?')) showToast('⚠️ Account deactivated', '#ef4444'); }
+function deleteAcct(){
+  const typed = prompt('Type DELETE to permanently delete your account:');
+  if(typed === 'DELETE'){
+    showToast('🗑️ Account permanently deleted', '#ef4444');
+    setTimeout(()=> window.location.href = 'index.html', 2500);
+  } else {
+    showToast('❌ Deletion cancelled');
+  }
+}
+
+// --- SAVE ALL ---
+function saveAll(){ showToast('✅ All settings saved!'); }
+
+// ================================================================
+// LOAD SAVED SETTINGS ON PAGE LOAD
+// ================================================================
+(function loadSaved(){
+  const s = getS();
+
+  // Theme
+  if(s.theme){
+    const body = document.getElementById('BD');
+    body.className = (s.theme === 'dark') ? '' : 'theme-'+s.theme;
+    document.querySelectorAll('.theme-card').forEach(c => c.classList.remove('selected'));
+    const tc = document.getElementById('tc-'+s.theme);
+    if(tc) tc.classList.add('selected');
+  }
+
+  // Accent color
+  if(s.accent){
+    document.documentElement.style.setProperty('--accent', s.accent);
+    document.documentElement.style.setProperty('--accent-dim', s.accent + '22');
+    document.querySelectorAll('.swatch').forEach(sw => {
+      sw.classList.toggle('selected', sw.dataset.c === s.accent);
+    });
+    document.getElementById('customColorPicker').value = s.accent;
+    document.getElementById('colorHex').textContent = s.accent;
+  }
+
+  // Font size
+  if(s.fontsize){
+    const map = { small:'12px', medium:'14px', large:'17px' };
+    document.body.style.fontSize = map[s.fontsize] || '14px';
+    document.querySelectorAll('.fs-card').forEach(c => {
+      c.classList.toggle('selected', c.dataset.sz === s.fontsize);
+    });
+  }
+
+  // Animations off
+  if(s.animations === false){
+    const st = document.createElement('style');
+    st.id = 'no-anim';
+    st.textContent = '*{transition:none!important;animation:none!important;}';
+    document.head.appendChild(st);
+    const el = document.getElementById('anim_on');
+    if(el) el.checked = false;
+  }
+
+  // All checkboxes / toggles
+  const togKeys = ['n1','n2','n3','n4','n5','n6','e1','e2','e3','e4','tfa1','tfa2','p1','p2','p3','p4','anim_on','anim_reduce'];
+  togKeys.forEach(k => {
+    if(s[k] !== undefined){
+      const el = document.getElementById(k);
+      if(el) el.checked = s[k];
+    }
+  });
+
+  // Time inputs
+  if(s.t_morning){ const el=document.getElementById('t_morning'); if(el) el.value=s.t_morning; }
+  if(s.t_evening){ const el=document.getElementById('t_evening'); if(el) el.value=s.t_evening; }
+
+  // Day pills
+  if(s.reminder_days && Array.isArray(s.reminder_days)){
+    document.querySelectorAll('.day-pill').forEach(p => {
+      p.classList.toggle('on', s.reminder_days.includes(p.textContent));
+    });
+  }
+
+  // Language
+  if(s.lang){
+    document.querySelectorAll('.lang-card').forEach(c => {
+      c.classList.toggle('selected', c.dataset.lang === s.lang);
+    });
+  }
+
+  // Timezone & date format
+  if(s.tz){ const el=document.getElementById('sel_tz'); if(el) el.value=s.tz; }
+  if(s.df){ const el=document.getElementById('sel_df'); if(el) el.value=s.df; }
+
+  // Weight unit
+  if(s.weight_unit){
+    document.getElementById('u_kg').classList.toggle('selected', s.weight_unit==='kg');
+    document.getElementById('u_lbs').classList.toggle('selected', s.weight_unit==='lbs');
+  }
+
+  // Height unit
+  if(s.height_unit){
+    document.getElementById('u_cm').classList.toggle('selected', s.height_unit==='cm');
+    document.getElementById('u_ft').classList.toggle('selected', s.height_unit==='ft');
+  }
+})();
+</script>
+</body>
+</html>

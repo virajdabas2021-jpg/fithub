@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="supabase-config.js"></script>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>FitCoach Hub — Member Dashboard</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+*{margin:0;padding:0;box-sizing:border-box;}
+:root{--bg:#0a0a0a;--surface:#111;--card:#1a1a1a;--border:#2a2a2a;--orange:#ff6b00;--orange-dim:#ff6b0018;--orange-light:#ff8c33;--text:#f0f0f0;--muted:#888;--green:#22c55e;--blue:#3b82f6;}
+body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);display:flex;min-height:100vh;}
+.sidebar{width:230px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;position:fixed;top:0;left:0;height:100vh;z-index:100;}
+.logo{padding:22px 18px;border-bottom:1px solid var(--border);}
+.logo a{font-size:19px;font-weight:800;color:var(--orange);text-decoration:none;}
+.logo small{display:block;color:var(--muted);font-size:11px;margin-top:2px;}
+.nav{flex:1;padding:14px 0;overflow-y:auto;}
+.nav-label{padding:8px 18px 4px;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;}
+.nav-item{display:flex;align-items:center;gap:10px;padding:10px 18px;color:var(--muted);cursor:pointer;font-size:13px;text-decoration:none;transition:all .2s;position:relative;}
+.nav-item:hover,.nav-item.active{color:var(--text);background:var(--orange-dim);}
+.nav-item.active::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--orange);}
+.nav-icon{font-size:16px;}
+.nav-badge{margin-left:auto;background:var(--orange);color:#fff;font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px;}
+.sidebar-bottom{padding:16px 18px;border-top:1px solid var(--border);}
+.user-info{display:flex;align-items:center;gap:10px;}
+.user-av{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--blue),#6366f1);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;}
+.user-name{font-size:13px;font-weight:600;}
+.user-plan{font-size:11px;color:var(--orange);}
+.main{margin-left:230px;flex:1;display:flex;flex-direction:column;}
+.topbar{padding:14px 26px;border-bottom:1px solid var(--border);background:var(--surface);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50;}
+.topbar-title{font-size:19px;font-weight:700;}
+.topbar-right{display:flex;align-items:center;gap:10px;}
+.btn{padding:8px 16px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;border:none;text-decoration:none;display:inline-block;transition:all .2s;}
+.btn-orange{background:var(--orange);color:#fff;}
+.btn-outline{background:none;border:1px solid var(--border);color:var(--text);}
+.content{padding:24px 26px;}
+.welcome-banner{background:linear-gradient(135deg,#1a0800,#0f0f0f);border:1px solid rgba(255,107,0,.2);border-radius:16px;padding:24px;margin-bottom:24px;display:flex;align-items:center;justify-content:space-between;}
+.wb-title{font-size:20px;font-weight:800;margin-bottom:4px;}
+.wb-sub{font-size:13px;color:var(--muted);}
+.wb-streak{display:flex;align-items:center;gap:8px;margin-top:12px;}
+.streak-pill{background:var(--orange);color:#fff;font-size:12px;font-weight:700;padding:4px 12px;border-radius:20px;}
+.wb-right{text-align:center;}
+.wb-progress-circle{width:90px;height:90px;border-radius:50%;background:conic-gradient(var(--orange) 152deg, var(--border) 152deg);display:flex;align-items:center;justify-content:center;}
+.wb-progress-inner{width:70px;height:70px;border-radius:50%;background:var(--card);display:flex;flex-direction:column;align-items:center;justify-content:center;}
+.wb-progress-val{font-size:18px;font-weight:800;color:var(--orange);}
+.wb-progress-label{font-size:9px;color:var(--muted);}
+.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px;}
+.stat-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px;}
+.stat-icon{font-size:20px;margin-bottom:8px;}
+.stat-val{font-size:24px;font-weight:800;}
+.stat-label{font-size:11px;color:var(--muted);margin-top:3px;}
+.stat-change{font-size:11px;margin-top:6px;font-weight:600;}
+.stat-change.good{color:var(--green);}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:18px;}
+.grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:18px;margin-bottom:18px;}
+.card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:20px;}
+.card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
+.card-title{font-size:14px;font-weight:700;}
+.view-all{font-size:11px;color:var(--orange);cursor:pointer;font-weight:600;text-decoration:none;}
+.my-plan-card{background:linear-gradient(135deg,#1a0800,#111);border:1px solid rgba(255,107,0,.3);}
+.plan-trainer{display:flex;align-items:center;gap:12px;margin-bottom:14px;}
+.plan-av{width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,#ff6b00,#ff9500);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:18px;}
+.plan-trainer-name{font-size:15px;font-weight:700;}
+.plan-trainer-spec{font-size:12px;color:var(--muted);}
+.plan-progress-bar{height:6px;background:var(--border);border-radius:3px;overflow:hidden;margin-bottom:8px;}
+.plan-progress-fill{height:100%;background:var(--orange);border-radius:3px;}
+.plan-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:14px;}
+.ps{background:var(--card);border-radius:8px;padding:10px;text-align:center;}
+.ps-val{font-size:16px;font-weight:800;}
+.ps-label{font-size:10px;color:var(--muted);margin-top:2px;}
+.workout-items{display:flex;flex-direction:column;gap:8px;}
+.workout-item{display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--border);border-radius:9px;padding:10px 12px;}
+.wi-check{width:22px;height:22px;border-radius:6px;border:2px solid var(--border);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0;}
+.wi-check.done{background:var(--green);border-color:var(--green);color:#fff;}
+.wi-name{font-size:13px;font-weight:600;flex:1;}
+.wi-sets{font-size:11px;color:var(--muted);}
+.meal-item{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border);}
+.meal-item:last-child{border:none;}
+.meal-left{display:flex;align-items:center;gap:10px;}
+.meal-icon{font-size:20px;}
+.meal-name{font-size:13px;font-weight:600;}
+.meal-time{font-size:11px;color:var(--muted);}
+.meal-cal{font-size:12px;font-weight:600;color:var(--orange);}
+.meal-check{width:22px;height:22px;border-radius:50%;background:var(--green);display:flex;align-items:center;justify-content:center;font-size:11px;color:#fff;}
+.mini-chart{display:flex;align-items:flex-end;gap:6px;height:80px;margin-top:8px;}
+.mini-bar-wrap{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;}
+.mini-bar{width:100%;background:var(--orange);border-radius:3px 3px 0 0;opacity:.7;}
+.mini-bar.current{opacity:1;box-shadow:0 0 8px var(--orange);}
+.mini-label{font-size:9px;color:var(--muted);}
+.video-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.video-thumb{background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden;cursor:pointer;transition:border-color .2s;}
+.video-thumb:hover{border-color:var(--orange);}
+.video-placeholder{height:70px;display:flex;align-items:center;justify-content:center;font-size:28px;background:linear-gradient(135deg,#1a0800,#111);}
+.video-info{padding:8px 10px;}
+.video-name{font-size:12px;font-weight:600;}
+.video-duration{font-size:10px;color:var(--muted);margin-top:2px;}
+.msg-preview{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);cursor:pointer;text-decoration:none;color:inherit;}
+.msg-preview:last-child{border:none;}
+.msg-av{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#ff6b00,#ff9500);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;flex-shrink:0;}
+.msg-name{font-size:13px;font-weight:600;}
+.msg-text{font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:140px;}
+.msg-time{margin-left:auto;font-size:10px;color:var(--muted);}
+.unread{width:8px;height:8px;background:var(--orange);border-radius:50%;flex-shrink:0;}
+.badge-row{display:flex;gap:10px;flex-wrap:wrap;}
+.badge-item{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:10px 14px;text-align:center;min-width:70px;}
+.badge-item.earned{border-color:var(--orange);background:var(--orange-dim);}
+.badge-emoji{font-size:24px;}
+.badge-name{font-size:10px;color:var(--muted);margin-top:4px;}
+.badge-item.earned .badge-name{color:var(--orange);}
+@media(max-width:900px){.sidebar{width:56px;}.sidebar .logo a,.nav-item span,.nav-label,.user-name,.user-plan,.logo small{display:none;}.main{margin-left:56px;}.stats-row{grid-template-columns:1fr 1fr;}.grid-2,.grid-3{grid-template-columns:1fr;}}
+</style>
+</head>
+<body>
+<aside class="sidebar">
+  <div class="logo"><a href="member-dashboard.html">⚡ FitCoach Hub</a><small>Member Area</small></div>
+  <nav class="nav">
+    <div class="nav-label">Main</div>
+    <a href="member-dashboard.html" class="nav-item active"><span class="nav-icon">🏠</span><span>Dashboard</span></a>
+    <a href="marketplace.html" class="nav-item"><span class="nav-icon">🔍</span><span>Find Trainers</span></a>
+    <a href="plan-details.html" class="nav-item"><span class="nav-icon">📦</span><span>My Plan</span></a>
+    <div class="nav-label">Track</div>
+    <a href="progress-tracker.html" class="nav-item"><span class="nav-icon">📊</span><span>Progress</span></a>
+    <a href="progress-tracker.html" class="nav-item"><span class="nav-icon">💧</span><span>Habits</span></a>
+    <a href="messages.html" class="nav-item"><span class="nav-icon">💬</span><span>Messages</span><span class="nav-badge">3</span></a>
+    <div class="nav-label">Account</div>
+    <a href="profile.html" class="nav-item"><span class="nav-icon">👤</span><span>Profile</span></a>
+    <a href="settings.html" class="nav-item"><span class="nav-icon">⚙️</span><span>Settings</span></a>
+    <a href="#" onclick="doLogout()" class="nav-item"><span class="nav-icon">🚪</span><span>Logout</span></a>
+  </nav>
+  <div class="sidebar-bottom">
+    <div class="user-info"><div class="user-av">A</div><div><div class="user-name">Amit Kumar</div><div class="user-plan">Pro Plan · Active</div></div></div>
+  </div>
+</aside>
+<div class="main">
+  <div class="topbar">
+    <div class="topbar-title">Good morning, Amit 👋</div>
+    <div class="topbar-right">
+      <a href="messages.html" style="position:relative;font-size:20px;cursor:pointer;text-decoration:none;">🔔<span style="position:absolute;top:-2px;right:-2px;width:8px;height:8px;background:var(--orange);border-radius:50%;"></span></a>
+      <a href="marketplace.html" class="btn btn-orange">+ New Plan</a>
+    </div>
+  </div>
+  <div class="content">
+    <div class="welcome-banner">
+      <div>
+        <div class="wb-title">Day 14 of 30 — Keep Going! 🔥</div>
+        <div class="wb-sub">Weight Loss Pro with Rahul Sharma · Renews July 14</div>
+        <div class="wb-streak"><span class="streak-pill">🔥 14 Day Streak</span><span style="font-size:13px;color:var(--muted);">Personal best!</span></div>
+      </div>
+      <div class="wb-right">
+        <div class="wb-progress-circle"><div class="wb-progress-inner"><div class="wb-progress-val">42%</div><div class="wb-progress-label">Complete</div></div></div>
+        <div style="font-size:11px;color:var(--muted);margin-top:6px;">Plan Progress</div>
+      </div>
+    </div>
+    <div class="stats-row">
+      <div class="stat-card"><div class="stat-icon">⚖️</div><div class="stat-val">72.5<span style="font-size:14px;color:var(--muted);"> kg</span></div><div class="stat-label">Current Weight</div><div class="stat-change good">↓ 3.5 kg lost</div></div>
+      <div class="stat-card"><div class="stat-icon">🔥</div><div class="stat-val">14</div><div class="stat-label">Day Streak</div><div class="stat-change good">🏆 Best Ever!</div></div>
+      <div class="stat-card"><div class="stat-icon">💧</div><div class="stat-val">5<span style="font-size:14px;color:var(--muted);">/8</span></div><div class="stat-label">Water Today</div><div class="stat-change" style="color:var(--blue);">3 more to go</div></div>
+      <div class="stat-card"><div class="stat-icon">🏅</div><div class="stat-val">4</div><div class="stat-label">Badges Earned</div><div class="stat-change good">+1 this week</div></div>
+    </div>
+    <div class="grid-2">
+      <div class="card my-plan-card">
+        <div class="card-header"><div class="card-title">📦 My Active Plan</div><a href="plan-details.html" class="view-all">View Details</a></div>
+        <div class="plan-trainer"><div class="plan-av">R</div><div><div class="plan-trainer-name">Rahul Sharma</div><div class="plan-trainer-spec">⚖️ Weight Loss Pro · ₹199/month</div></div></div>
+        <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-bottom:6px;"><span>Progress</span><span style="color:var(--orange);font-weight:700;">Day 14/30 · 42%</span></div>
+        <div class="plan-progress-bar"><div class="plan-progress-fill" style="width:42%"></div></div>
+        <div class="plan-stats">
+          <div class="ps"><div class="ps-val" style="color:var(--green);">↓3.5kg</div><div class="ps-label">Weight Lost</div></div>
+          <div class="ps"><div class="ps-val">12/14</div><div class="ps-label">Workouts Done</div></div>
+          <div class="ps"><div class="ps-val" style="color:var(--orange)">16</div><div class="ps-label">Days Left</div></div>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:14px;">
+          <a href="messages.html" class="btn btn-outline" style="flex:1;text-align:center;font-size:12px;">💬 Message Trainer</a>
+          <a href="progress-tracker.html" class="btn btn-orange" style="flex:1;text-align:center;font-size:12px;">📊 Log Progress</a>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="card-title">🏋️ Today's Workout — Chest Day</div><a href="progress-tracker.html" class="view-all">Full Plan</a></div>
+        <div class="workout-items">
+          <div class="workout-item"><div class="wi-check done" onclick="toggleCheck(this)">✓</div><div><div class="wi-name">Bench Press</div><div class="wi-sets">4 sets · 12,10,8,6 reps</div></div><span style="font-size:16px;cursor:pointer;" onclick="openVideoPlayer('Bench Press','https://www.youtube.com/embed/rT7DgCr-3pg')">▶️</span></div>
+          <div class="workout-item"><div class="wi-check done" onclick="toggleCheck(this)">✓</div><div><div class="wi-name">Incline Dumbbell Press</div><div class="wi-sets">3 sets · 12 reps</div></div><span style="font-size:16px;cursor:pointer;" onclick="openVideoPlayer('Incline Dumbbell Press','https://www.youtube.com/embed/8iPEnn-ltC8')">▶️</span></div>
+          <div class="workout-item"><div class="wi-check" onclick="toggleCheck(this)"></div><div><div class="wi-name">Cable Fly</div><div class="wi-sets">3 sets · 15 reps</div></div><span style="font-size:16px;cursor:pointer;" onclick="openVideoPlayer('Cable Fly','https://www.youtube.com/embed/Iwe6AmxVf7o')">▶️</span></div>
+          <div class="workout-item"><div class="wi-check" onclick="toggleCheck(this)"></div><div><div class="wi-name">Tricep Pushdown</div><div class="wi-sets">3 sets · 12 reps</div></div><span style="font-size:16px;cursor:pointer;" onclick="openVideoPlayer('Tricep Pushdown','https://www.youtube.com/embed/2-LAMcpzODU')">▶️</span></div>
+          <div class="workout-item"><div class="wi-check" onclick="toggleCheck(this)"></div><div><div class="wi-name">Skull Crushers</div><div class="wi-sets">3 sets · 10 reps</div></div><span style="font-size:16px;cursor:pointer;" onclick="openVideoPlayer('Skull Crushers','https://www.youtube.com/embed/NIyUmMQRCrg')">▶️</span></div>
+        </div>
+        <div style="margin-top:12px;text-align:right;font-size:12px;color:var(--muted);">2/5 completed</div>
+      </div>
+    </div>
+    <div class="grid-3">
+      <div class="card">
+        <div class="card-header"><div class="card-title">🥗 Today's Diet</div><span class="view-all">Full Plan</span></div>
+        <div class="meal-item"><div class="meal-left"><div class="meal-icon">🌅</div><div><div class="meal-name">Breakfast</div><div class="meal-time">7:00 AM · Oats + Eggs</div></div></div><div style="display:flex;align-items:center;gap:8px;"><div class="meal-cal">420 cal</div><div class="meal-check">✓</div></div></div>
+        <div class="meal-item"><div class="meal-left"><div class="meal-icon">☀️</div><div><div class="meal-name">Lunch</div><div class="meal-time">1:00 PM · Dal + Roti + Salad</div></div></div><div style="display:flex;align-items:center;gap:8px;"><div class="meal-cal">580 cal</div><div class="meal-check">✓</div></div></div>
+        <div class="meal-item"><div class="meal-left"><div class="meal-icon">🌙</div><div><div class="meal-name">Dinner</div><div class="meal-time">7:30 PM · Paneer + Sabzi</div></div></div><div style="display:flex;align-items:center;gap:8px;"><div class="meal-cal">520 cal</div><div style="width:22px;height:22px;border-radius:50%;border:2px solid var(--border);"></div></div></div>
+        <div style="margin-top:12px;background:var(--surface);border-radius:8px;padding:10px;font-size:12px;display:flex;justify-content:space-between;"><span style="color:var(--muted);">Total Calories</span><span style="color:var(--orange);font-weight:700;">1000/1800 cal</span></div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="card-title">📈 Weight This Week</div><a href="progress-tracker.html" class="view-all">Full Chart</a></div>
+        <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px;"><span style="color:var(--muted);">Start: <strong style="color:var(--text)">76 kg</strong></span><span style="color:var(--muted);">Now: <strong style="color:var(--orange)">72.5 kg</strong></span></div>
+        <div class="mini-chart">
+          <div class="mini-bar-wrap"><div class="mini-bar" style="height:55%"></div><div class="mini-label">Mon</div></div>
+          <div class="mini-bar-wrap"><div class="mini-bar" style="height:60%"></div><div class="mini-label">Tue</div></div>
+          <div class="mini-bar-wrap"><div class="mini-bar" style="height:50%"></div><div class="mini-label">Wed</div></div>
+          <div class="mini-bar-wrap"><div class="mini-bar" style="height:65%"></div><div class="mini-label">Thu</div></div>
+          <div class="mini-bar-wrap"><div class="mini-bar" style="height:58%"></div><div class="mini-label">Fri</div></div>
+          <div class="mini-bar-wrap"><div class="mini-bar" style="height:70%"></div><div class="mini-label">Sat</div></div>
+          <div class="mini-bar-wrap"><div class="mini-bar current" style="height:75%"></div><div class="mini-label" style="color:var(--orange)">Today</div></div>
+        </div>
+        <a href="progress-tracker.html" class="btn btn-orange" style="width:100%;text-align:center;margin-top:12px;font-size:12px;padding:9px;display:block;">+ Log Today's Weight</a>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="card-title">💬 Messages</div><a href="messages.html" class="view-all">View All</a></div>
+        <a href="messages.html" class="msg-preview"><div class="msg-av">R</div><div style="flex:1;min-width:0;"><div class="msg-name">Rahul Sharma 🏋️</div><div class="msg-text">Diet plan updated — check now!</div></div><div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;"><div class="msg-time">2m</div><div class="unread"></div></div></a>
+        <a href="messages.html" class="msg-preview"><div class="msg-av" style="background:linear-gradient(135deg,#6366f1,#8b5cf6);">P</div><div style="flex:1;min-width:0;"><div class="msg-name">Priya Verma</div><div class="msg-text">Great job today! 🔥</div></div><div class="msg-time">1h</div></a>
+        <a href="messages.html" class="msg-preview"><div class="msg-av" style="background:linear-gradient(135deg,#22c55e,#10b981);">F</div><div style="flex:1;min-width:0;"><div class="msg-name">FitCoach Support</div><div class="msg-text">Your query has been resolved ✅</div></div><div class="msg-time">2d</div></a>
+        <a href="messages.html" class="btn btn-outline" style="width:100%;text-align:center;margin-top:12px;font-size:12px;padding:9px;display:block;">Open Messages</a>
+      </div>
+    </div>
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-header"><div class="card-title">🎥 Exercise Videos</div><span class="view-all">View All</span></div>
+        <div class="video-grid">
+          <div class="video-thumb" onclick="openVideoPlayer('Bench Press','https://www.youtube.com/embed/rT7DgCr-3pg')"><div class="video-placeholder">▶️</div><div class="video-info"><div class="video-name">Bench Press Guide</div><div class="video-duration">⏱ Tap to Watch</div></div></div>
+          <div class="video-thumb" onclick="openVideoPlayer('Squat Tutorial','https://www.youtube.com/embed/ultWZbUMPL8')"><div class="video-placeholder">▶️</div><div class="video-info"><div class="video-name">Squat Tutorial</div><div class="video-duration">⏱ Tap to Watch</div></div></div>
+          <div class="video-thumb" onclick="openVideoPlayer('Deadlift Tutorial','https://www.youtube.com/embed/op9kVnSso6Q')"><div class="video-placeholder">▶️</div><div class="video-info"><div class="video-name">Deadlift Form</div><div class="video-duration">⏱ Tap to Watch</div></div></div>
+          <div class="video-thumb" onclick="openVideoPlayer('Pull-up Tutorial','https://www.youtube.com/embed/eGo4IYlbE5g')"><div class="video-placeholder">▶️</div><div class="video-info"><div class="video-name">Pull-Up Guide</div><div class="video-duration">⏱ Tap to Watch</div></div></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="card-title">🏅 My Achievements</div><a href="progress-tracker.html" class="view-all">View All</a></div>
+        <div class="badge-row">
+          <div class="badge-item earned"><div class="badge-emoji">🔥</div><div class="badge-name">7 Day Streak</div></div>
+          <div class="badge-item earned"><div class="badge-emoji">⚖️</div><div class="badge-name">First 1kg</div></div>
+          <div class="badge-item earned"><div class="badge-emoji">💧</div><div class="badge-name">Hydration Pro</div></div>
+          <div class="badge-item earned"><div class="badge-emoji">🏋️</div><div class="badge-name">10 Workouts</div></div>
+          <div class="badge-item"><div class="badge-emoji" style="opacity:.3">🏆</div><div class="badge-name">30 Day Streak</div></div>
+          <div class="badge-item"><div class="badge-emoji" style="opacity:.3">🎯</div><div class="badge-name">Goal Reached</div></div>
+        </div>
+        <div style="margin-top:14px;background:var(--surface);border-radius:8px;padding:10px;font-size:12px;color:var(--muted);text-align:center;">4 / 12 badges earned · <span style="color:var(--orange);font-weight:600;">Keep going!</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+<div id="videoModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.9);z-index:9999;align-items:center;justify-content:center;flex-direction:column;">
+  <div style="width:100%;max-width:720px;padding:0 16px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+      <div id="videoModalTitle" style="font-size:16px;font-weight:700;color:#fff;"></div>
+      <button onclick="closeVideoPlayer()" style="background:rgba(255,255,255,.1);border:none;color:#fff;border-radius:50%;width:36px;height:36px;font-size:20px;cursor:pointer;">×</button>
+    </div>
+    <div style="position:relative;padding-bottom:56.25%;border-radius:14px;overflow:hidden;background:#000;">
+      <iframe id="videoIframe" style="position:absolute;inset:0;width:100%;height:100%;border:none;" allowfullscreen></iframe>
+    </div>
+    <div style="display:flex;gap:10px;margin-top:14px;justify-content:center;">
+      <button onclick="closeVideoPlayer()" style="background:none;border:1px solid rgba(255,255,255,.3);color:#fff;border-radius:9px;padding:9px 20px;font-size:13px;cursor:pointer;">✕ Close</button>
+    </div>
+  </div>
+</div>
+<script>
+  function toggleCheck(el){el.classList.toggle('done');el.textContent=el.classList.contains('done')?'✓':'';}
+  function openVideoPlayer(title,url){document.getElementById('videoModalTitle').textContent='🎥 '+title;document.getElementById('videoIframe').src=url+'?autoplay=1&rel=0';document.getElementById('videoModal').style.display='flex';document.body.style.overflow='hidden';}
+  function closeVideoPlayer(){document.getElementById('videoIframe').src='';document.getElementById('videoModal').style.display='none';document.body.style.overflow='';}
+  document.getElementById('videoModal').addEventListener('click',function(e){if(e.target===this)closeVideoPlayer();});
+  document.addEventListener('keydown',e=>{if(e.key==='Escape')closeVideoPlayer();});
+  document.querySelectorAll('.nav-item').forEach(item=>{item.addEventListener('click',()=>{document.querySelectorAll('.nav-item').forEach(i=>i.classList.remove('active'));item.classList.add('active');});});
+</script>
+<script>
+async function doLogout() {
+  await sb.auth.signOut();      // <- actual Supabase session clear
+  window.location.href = 'index.html';
+}
+</script>
+<script>
+(async function loadRealUserData() {
+  // 1. Get logged-in user session
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session) {
+    window.location.href = 'index.html';
+    return;
+  }
+
+  const userId = session.user.id;
+
+  // 2. Fetch user profile from 'users' table
+  const { data: profile, error } = await sb
+    .from('users')
+    .select('*')
+    .eq('id', userId)
+    .single();
+
+  if (error || !profile) {
+    console.error('Profile fetch failed:', error);
+    return;
+  }
+
+  // 3. Update sidebar + topbar with REAL name
+  const firstName = profile.first_name || (profile.name ? profile.name.split(' ')[0] : 'User');
+  const fullName = profile.name || firstName;
+  const initial = firstName.charAt(0).toUpperCase();
+
+  document.querySelector('.user-name').textContent = fullName;
+  document.querySelector('.user-av').textContent = initial;
+  document.querySelector('.topbar-title').textContent = `Good morning, ${firstName} 👋`;
+
+  // 4. Plan info
+  if (profile.active_plan) {
+    document.querySelector('.user-plan').textContent = profile.active_plan.name || 'Plan Active';
+  } else {
+    document.querySelector('.user-plan').textContent = 'No active plan';
+  }
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase-config.js"></script>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>FitCoach Hub — Find Your Trainer</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+*{margin:0;padding:0;box-sizing:border-box;}
+:root{--bg:#0a0a0a;--surface:#111;--card:#1a1a1a;--border:#2a2a2a;--orange:#ff6b00;--orange-dim:#ff6b0018;--orange-light:#ff8c33;--text:#f0f0f0;--muted:#888;--green:#22c55e;}
+body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;}
+
+/* NAV */
+nav{padding:16px 32px;display:flex;align-items:center;justify-content:space-between;background:var(--surface);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:100;}
+.logo{font-size:20px;font-weight:800;color:var(--orange);text-decoration:none;}
+.nav-links{display:flex;gap:4px;}
+.nav-link{padding:7px 14px;border-radius:8px;font-size:13px;color:var(--muted);cursor:pointer;text-decoration:none;transition:all .2s;}
+.nav-link:hover,.nav-link.active{background:var(--orange-dim);color:var(--orange);}
+.btn{padding:9px 18px;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;border:none;text-decoration:none;display:inline-block;transition:all .2s;}
+.btn-orange{background:var(--orange);color:#fff;}
+.btn-orange:hover{background:var(--orange-light);}
+.btn-outline{background:none;border:1px solid var(--border);color:var(--text);}
+
+/* HERO BANNER */
+.hero-banner{background:linear-gradient(135deg,#1a0a00,#0a0a0a);border-bottom:1px solid var(--border);padding:48px 32px;text-align:center;}
+.hero-banner h1{font-size:36px;font-weight:800;margin-bottom:10px;}
+.hero-banner h1 span{color:var(--orange);}
+.hero-banner p{color:var(--muted);font-size:15px;margin-bottom:24px;}
+.search-bar{display:flex;align-items:center;gap:10px;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:10px 16px;max-width:520px;margin:0 auto;}
+.search-bar input{background:none;border:none;outline:none;color:var(--text);font-size:14px;flex:1;font-family:inherit;}
+.search-bar input::placeholder{color:var(--muted);}
+
+/* LAYOUT */
+.layout{display:flex;max-width:1200px;margin:0 auto;padding:28px 20px;gap:24px;}
+
+/* SIDEBAR FILTERS */
+.filters{width:240px;flex-shrink:0;}
+.filter-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:20px;margin-bottom:16px;}
+.filter-title{font-size:13px;font-weight:700;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;}
+.filter-clear{font-size:11px;color:var(--orange);cursor:pointer;font-weight:600;}
+.filter-group{margin-bottom:16px;}
+.filter-group-label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;}
+.filter-options{display:flex;flex-direction:column;gap:6px;}
+.filter-opt{display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;}
+.filter-opt input[type=checkbox]{accent-color:var(--orange);}
+.filter-opt:hover{color:var(--orange);}
+.price-range{display:flex;flex-direction:column;gap:8px;}
+input[type=range]{width:100%;accent-color:var(--orange);}
+.price-labels{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);}
+.rating-stars{display:flex;gap:6px;flex-direction:column;}
+.star-opt{display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;}
+.star-opt:hover{color:var(--orange);}
+
+/* TRAINER GRID */
+.trainer-grid-wrap{flex:1;}
+.grid-topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px;}
+.results-count{font-size:14px;color:var(--muted);}
+.sort-select{background:var(--card);border:1px solid var(--border);color:var(--text);padding:8px 12px;border-radius:9px;font-size:13px;font-family:inherit;}
+
+/* CATEGORY PILLS */
+.cat-pills{display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap;}
+.pill{padding:6px 16px;border-radius:40px;font-size:12px;font-weight:600;cursor:pointer;border:1px solid var(--border);color:var(--muted);transition:all .2s;}
+.pill:hover,.pill.active{background:var(--orange);border-color:var(--orange);color:#fff;}
+
+/* TRAINER CARDS */
+.trainers-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:18px;}
+.trainer-card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:22px;transition:all .2s;position:relative;overflow:hidden;}
+.trainer-card:hover{border-color:var(--orange);transform:translateY(-2px);box-shadow:0 8px 32px rgba(255,107,0,.1);}
+.tc-badge{position:absolute;top:14px;right:14px;background:var(--orange);color:#fff;font-size:10px;font-weight:700;padding:3px 10px;border-radius:20px;}
+.tc-badge.top{background:linear-gradient(135deg,#eab308,#f59e0b);}
+.tc-badge.new{background:var(--green);}
+.tc-badge.pending{background:#6b7280;}
+.tc-top{display:flex;align-items:center;gap:14px;margin-bottom:14px;}
+.tc-av{width:58px;height:58px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:800;flex-shrink:0;border:2px solid var(--border);}
+.tc-name{font-size:16px;font-weight:700;margin-bottom:3px;}
+.tc-spec{font-size:12px;color:var(--muted);}
+.tc-loc{font-size:12px;color:var(--muted);margin-top:2px;}
+.tc-rating{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600;margin-top:4px;color:var(--text);}
+.tc-rating .reviews{color:var(--muted);font-weight:400;font-size:11px;}
+.tc-tags{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;}
+.tag{background:var(--border);color:var(--muted);padding:3px 10px;border-radius:20px;font-size:11px;}
+.tag.orange{background:var(--orange-dim);color:var(--orange);}
+.tc-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px;background:var(--surface);border-radius:10px;padding:12px;}
+.tc-stat{text-align:center;}
+.tc-stat-val{font-size:15px;font-weight:700;}
+.tc-stat-label{font-size:10px;color:var(--muted);margin-top:2px;}
+.tc-footer{display:flex;align-items:center;justify-content:space-between;}
+.tc-price-wrap .price-val{font-size:22px;font-weight:800;color:var(--orange);}
+.tc-price-wrap .price-period{font-size:12px;color:var(--muted);}
+.tc-actions{display:flex;gap:8px;}
+.btn-sm{padding:8px 14px;font-size:12px;font-weight:600;border-radius:8px;cursor:pointer;border:none;text-decoration:none;display:inline-block;}
+.btn-sm-orange{background:var(--orange);color:#fff;}
+.btn-sm-outline{background:none;border:1px solid var(--border);color:var(--text);}
+
+/* PAGINATION */
+.pagination{display:flex;gap:6px;justify-content:center;margin-top:32px;}
+.page-btn{width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;cursor:pointer;border:1px solid var(--border);background:var(--card);color:var(--muted);transition:all .2s;}
+.page-btn.active,.page-btn:hover{background:var(--orange);border-color:var(--orange);color:#fff;}
+
+@media(max-width:900px){
+  .filters{display:none;}
+  .trainers-grid{grid-template-columns:1fr;}
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="index.html" class="logo">⚡ FitCoach Hub</a>
+  <div class="nav-links">
+    <a href="index.html" class="nav-link">Home</a>
+    <a href="marketplace.html" class="nav-link active">Trainers</a>
+    <a href="member-dashboard.html" class="nav-link">Dashboard</a>
+    <a href="messages.html" class="nav-link">Messages</a>
+  </div>
+  <div style="display:flex;gap:8px;">
+    <a href="member-dashboard.html" class="btn btn-outline">My Account</a>
+    <a href="trainer-registration.html" class="btn btn-orange">Join as Trainer</a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<div class="hero-banner">
+  <h1>Find Your <span>Perfect Trainer</span></h1>
+  <p id="heroSubtext">Certified coaches ready to help you transform. Starting at ₹149/month.</p>
+  <div class="search-bar">
+    <span style="color:var(--muted);">🔍</span>
+    <input type="text" id="searchInput" placeholder="Search by name, specialization, or city..."/>
+    <button class="btn btn-orange" style="padding:7px 16px;font-size:12px;" onclick="applySearch()">Search</button>
+  </div>
+</div>
+
+<div class="layout">
+  <!-- FILTERS SIDEBAR -->
+  <div class="filters">
+    <div class="filter-card">
+      <div class="filter-title">🎯 Filters <span class="filter-clear">Clear All</span></div>
+
+      <div class="filter-group">
+        <div class="filter-group-label">Goal</div>
+        <div class="filter-options">
+          <label class="filter-opt"><input type="checkbox" checked/> Weight Loss</label>
+          <label class="filter-opt"><input type="checkbox"/> Muscle Gain</label>
+          <label class="filter-opt"><input type="checkbox"/> Fat Loss</label>
+          <label class="filter-opt"><input type="checkbox"/> Strength Training</label>
+          <label class="filter-opt"><input type="checkbox"/> Women Fitness</label>
+          <label class="filter-opt"><input type="checkbox"/> Yoga & Flexibility</label>
+        </div>
+      </div>
+
+      <div class="filter-group">
+        <div class="filter-group-label">Level</div>
+        <div class="filter-options">
+          <label class="filter-opt"><input type="checkbox" checked/> Beginner</label>
+          <label class="filter-opt"><input type="checkbox"/> Intermediate</label>
+          <label class="filter-opt"><input type="checkbox"/> Advanced</label>
+        </div>
+      </div>
+
+      <div class="filter-group">
+        <div class="filter-group-label">Price Range</div>
+        <div class="price-range">
+          <input type="range" min="149" max="999" value="999" id="priceFilter" oninput="document.getElementById('priceVal').textContent='Up to ₹'+this.value"/>
+          <div class="price-labels"><span>₹149</span><span id="priceVal">Up to ₹999</span></div>
+        </div>
+      </div>
+
+      <div class="filter-group">
+        <div class="filter-group-label">Min. Rating</div>
+        <div class="rating-stars">
+          <label class="star-opt"><input type="radio" name="rating" value="5"/> ⭐⭐⭐⭐⭐ 5.0</label>
+          <label class="star-opt"><input type="radio" name="rating" value="4"/> ⭐⭐⭐⭐ 4.0+</label>
+          <label class="star-opt"><input type="radio" name="rating" value="3"/> ⭐⭐⭐ 3.0+</label>
+          <label class="star-opt"><input type="radio" name="rating" value="0" checked/> Any Rating</label>
+        </div>
+      </div>
+
+      <div class="filter-group">
+        <div class="filter-group-label">Experience</div>
+        <div class="filter-options">
+          <label class="filter-opt"><input type="checkbox"/> 1-2 Years</label>
+          <label class="filter-opt"><input type="checkbox"/> 3-5 Years</label>
+          <label class="filter-opt"><input type="checkbox"/> 5+ Years</label>
+        </div>
+      </div>
+
+      <button class="btn btn-orange" style="width:100%;margin-top:4px;" onclick="applySearch()">Apply Filters</button>
+    </div>
+  </div>
+
+  <!-- TRAINER GRID -->
+  <div class="trainer-grid-wrap">
+    <div class="cat-pills">
+      <div class="pill active" onclick="setPill(this,null)">All Trainers</div>
+      <div class="pill" onclick="setPill(this,'weight loss')">⚖️ Weight Loss</div>
+      <div class="pill" onclick="setPill(this,'muscle gain')">💪 Muscle Gain</div>
+      <div class="pill" onclick="setPill(this,'women fitness')">👩 Women Fitness</div>
+      <div class="pill" onclick="setPill(this,'fat loss')">🔥 Fat Loss</div>
+      <div class="pill" onclick="setPill(this,'strength')">🏋️ Strength</div>
+      <div class="pill" onclick="setPill(this,'nutrition')">🥗 Nutrition</div>
+    </div>
+
+    <div class="grid-topbar">
+      <div class="results-count" id="resultsCount">Loading trainers...</div>
+      <select class="sort-select" id="sortSelect" onchange="renderTrainers()">
+        <option value="rating">Sort: Highest Rating</option>
+        <option value="price_low">Sort: Lowest Price</option>
+        <option value="price_high">Sort: Highest Price</option>
+        <option value="students">Sort: Most Students</option>
+        <option value="newest">Sort: Newest</option>
+      </select>
+    </div>
+
+    <div class="trainers-grid" id="trainersGrid">
+      <div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--muted);">Loading trainers...</div>
+    </div>
+
+    <div class="pagination" id="pagination" style="display:none;">
+      <div class="page-btn active">1</div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ===== STATE =====
+let allTrainers = [];      // full list fetched from Supabase (approved only)
+let activePillGoal = null; // currently selected category pill filter
+let currentSearch = '';    // current search text
+
+// ===== FETCH TRAINERS FROM SUPABASE =====
+async function loadTrainers() {
+  const grid = document.getElementById('trainersGrid');
+
+  const { data: trainers, error } = await sb
+    .from('trainers')
+    .select('*')
+    .eq('is_approved', true)     // sirf admin-approved trainers members ko dikhenge
+    .order('rating', { ascending: false });
+
+  if (error) {
+    console.error('Failed to load trainers:', error);
+    grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--muted);">Failed to load trainers. Please try again later.</div>`;
+    document.getElementById('resultsCount').textContent = 'Error loading trainers';
+    return;
+  }
+
+  allTrainers = trainers || [];
+  document.getElementById('heroSubtext').textContent =
+    `${allTrainers.length} certified coaches ready to help you transform. Starting at ₹149/month.`;
+
+  renderTrainers();
+}
+
+// ===== ESCAPE HELPER (prevents HTML/script injection from user-entered names etc.) =====
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str == null ? '' : String(str);
+  return div.innerHTML;
+}
+
+// ===== FILTER + SORT + RENDER =====
+function renderTrainers() {
+  const grid = document.getElementById('trainersGrid');
+  const resultsCount = document.getElementById('resultsCount');
+  const sortBy = document.getElementById('sortSelect').value;
+  const maxPrice = Number(document.getElementById('priceFilter').value);
+  const minRating = Number(document.querySelector('input[name="rating"]:checked')?.value || 0);
+
+  let list = [...allTrainers];
+
+  // Search filter (name, city, specialization)
+  if (currentSearch.trim()) {
+    const q = currentSearch.trim().toLowerCase();
+    list = list.filter(t => {
+      const specs = Array.isArray(t.specializations) ? t.specializations.join(' ').toLowerCase() : '';
+      return (t.name || '').toLowerCase().includes(q)
+          || (t.city || '').toLowerCase().includes(q)
+          || specs.includes(q);
+    });
+  }
+
+  // Category pill filter
+  if (activePillGoal) {
+    list = list.filter(t => {
+      const specs = Array.isArray(t.specializations) ? t.specializations.join(' ').toLowerCase() : '';
+      return specs.includes(activePillGoal);
+    });
+  }
+
+  // Price filter
+  list = list.filter(t => (t.plan_price == null) || (t.plan_price <= maxPrice));
+
+  // Rating filter
+  if (minRating > 0) {
+    list = list.filter(t => (t.rating || 0) >= minRating);
+  }
+
+  // Sort
+  list.sort((a, b) => {
+    if (sortBy === 'rating') return (b.rating || 0) - (a.rating || 0);
+    if (sortBy === 'price_low') return (a.plan_price || 0) - (b.plan_price || 0);
+    if (sortBy === 'price_high') return (b.plan_price || 0) - (a.plan_price || 0);
+    if (sortBy === 'students') return (b.total_students || 0) - (a.total_students || 0);
+    if (sortBy === 'newest') return new Date(b.created_at || 0) - new Date(a.created_at || 0);
+    return 0;
+  });
+
+  resultsCount.innerHTML = `Showing <strong style="color:var(--text)">${list.length} trainer${list.length !== 1 ? 's' : ''}</strong> in India`;
+
+  if (list.length === 0) {
+    grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--muted);">No trainers match your filters. Try adjusting them.</div>`;
+    return;
+  }
+
+  grid.innerHTML = list.map(renderTrainerCard).join('');
+}
+
+// ===== SINGLE CARD RENDER =====
+function renderTrainerCard(t) {
+  const name = escapeHtml(t.name || 'Unnamed Trainer');
+  const initial = name.charAt(0).toUpperCase();
+  const city = escapeHtml(t.city || 'Location not set');
+  const specs = Array.isArray(t.specializations) ? t.specializations : [];
+  const specText = specs.length ? escapeHtml(specs[0]) : 'General Fitness';
+  const hasRating = t.rating != null && Number(t.rating) > 0;
+  const ratingDisplay = hasRating ? Number(t.rating).toFixed(1) : 'New';
+  const students = t.total_students || 0;
+  const price = (t.plan_price !== null && t.plan_price !== undefined) ? t.plan_price : '—';
+  const planName = t.plan_name ? escapeHtml(t.plan_name) : 'Custom Plan';
+
+  const tagsHtml = specs.length
+    ? specs.slice(0, 4).map((s, i) => `<span class="tag ${i === 0 ? 'orange' : ''}">${escapeHtml(s)}</span>`).join('')
+    : `<span class="tag orange">General Fitness</span>`;
+
+  return `
+  <div class="trainer-card">
+    <div class="tc-badge" style="background:var(--green);">✅ APPROVED</div>
+    <div class="tc-top">
+      <div class="tc-av" style="background:linear-gradient(135deg,#ff6b00,#ff9500);">${initial}</div>
+      <div>
+        <div class="tc-name">${name}</div>
+        <div class="tc-spec">${specText}</div>
+        <div class="tc-loc">📍 ${city}</div>
+        <div class="tc-rating">⭐ ${ratingDisplay}</div>
+      </div>
+    </div>
+    <div class="tc-tags">${tagsHtml}</div>
+    <div class="tc-stats">
+      <div class="tc-stat"><div class="tc-stat-val" style="color:var(--orange)">${students}</div><div class="tc-stat-label">Students</div></div>
+      <div class="tc-stat"><div class="tc-stat-val">${ratingDisplay}${hasRating ? '⭐' : ''}</div><div class="tc-stat-label">Rating</div></div>
+      <div class="tc-stat"><div class="tc-stat-val" style="color:var(--green);font-size:12px;">${planName}</div><div class="tc-stat-label">Plan</div></div>
+    </div>
+    <div class="tc-footer">
+      <div class="tc-price-wrap"><div class="price-val">₹${price}<span style="font-size:13px;color:var(--muted)">/mo</span></div><div class="price-period">Cancel anytime</div></div>
+      <div class="tc-actions">
+        <a href="plan-details.html?trainer=${t.id}" class="btn-sm btn-sm-outline">View Plan</a>
+        <a href="plan-details.html?trainer=${t.id}" class="btn-sm btn-sm-orange">Buy Now</a>
+      </div>
+    </div>
+  </div>`;
+}
+
+// ===== UI HANDLERS =====
+function setPill(el, goal) {
+  document.querySelectorAll('.pill').forEach(p => p.classList.remove('active'));
+  el.classList.add('active');
+  activePillGoal = goal;
+  renderTrainers();
+}
+
+function applySearch() {
+  currentSearch = document.getElementById('searchInput').value;
+  renderTrainers();
+}
+
+document.getElementById('searchInput').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') applySearch();
+});
+
+document.querySelectorAll('input[name="rating"]').forEach(r => {
+  r.addEventListener('change', renderTrainers);
+});
+
+// ===== INIT =====
+loadTrainers();
+</script>
+</body>
+</html>
